@@ -10,3 +10,10 @@ data/*
 !data/raw/
 data/raw/*
 !data/raw/MANIFEST.json
+
+# Estado do container, não artefato do estudo.
+qdrant_storage/
+
+# Caches de ferramentas.
+.pytest_cache/
+.ruff_cache/

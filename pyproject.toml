@@ -75,6 +75,7 @@ dependencies = [
     "xxhash==3.8.1",
     "yarl==1.24.5",
     "pytest>=9.1.1",
+    "ir-measures>=0.4.3",
 ]
 
 [dependency-groups]
@@ -92,6 +93,7 @@ packages = ["quantptbr"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["gpu: requer GPU e o modelo baixado; roda o passe de embedding"]
 
 [tool.ruff]
 line-length = 100
