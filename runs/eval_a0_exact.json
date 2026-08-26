@@ -1,7 +1,7 @@
 {
   "run": {
-    "started_at": "2026-08-26T00:33:21.481454+00:00",
-    "git_commit": "2d5c0d73bb7b67a174543499d21bb19afd97212f",
+    "started_at": "2026-08-26T00:38:44.989016+00:00",
+    "git_commit": "f83d3585243df0ee7cba1acc5fa1030d42ba76bb",
     "git_dirty": false,
     "arm": "A0",
     "arm_config": {
@@ -107,13 +107,13 @@
     "python": "3.14.4",
     "kernel": "7.0.11-200.nobara.fc43.x86_64",
     "memory": {
-      "anon_mb": 293.8,
+      "anon_mb": 291.1,
       "file_mb": 3199.5,
-      "total_mb": 3690.2,
-      "host_available_mb": 14713.2,
-      "host_swap_used_mb": 3042.1,
+      "total_mb": 3687.6,
+      "host_available_mb": 13987.1,
+      "host_swap_used_mb": 2973.4,
       "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-bcebe32e312f8bef315bbe1cddb02697768e7c82fec44d412bd12d954f84c2a6.scope/container",
-      "taken_at": "2026-08-26T00:33:21.523766+00:00",
+      "taken_at": "2026-08-26T00:38:45.047001+00:00",
       "is_void": false
     }
   },
@@ -231,12 +231,28 @@
   },
   "run_file": "runs/retrieval/A0_exact.jsonl",
   "calibration": {
+    "protocol": "run de recuperação sobre o corpus de 1M, pontuado contra os qrels de 10M",
     "published": 0.3955,
-    "floor_bm25": 0.3156,
-    "preregistered_over_49": 0.46694688386201927,
-    "diagnostic_over_50": 0.4576079461847789,
-    "delta_49": 0.07144688386201925,
-    "delta_50": 0.062107946184778884,
-    "verdict": "PARE: fora de 0,05 do valor publicado"
+    "preregistered_over_49": 0.38238958640730286,
+    "diagnostic_over_50": 0.3747417946791568,
+    "delta_49": -0.013110413592697157,
+    "delta_50": -0.020758205320843215,
+    "study_qrels_ndcg10": 0.46694688386201927,
+    "range_check": {
+      "floor": {
+        "system": "BM25",
+        "ndcg10": 0.3991
+      },
+      "nearest_above": {
+        "system": "ColBERT-X mMARCO pt-BR",
+        "ndcg10": 0.4927
+      },
+      "ceiling": {
+        "system": "BM25 + mT5-XL",
+        "ndcg10": 0.6593
+      },
+      "inside": true
+    },
+    "verdict": "aparelho validado"
   }
 }
