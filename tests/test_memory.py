@@ -32,25 +32,49 @@ def test_estimator_refuses_an_unknown_scheme():
         memory.analytical_mb(1000, 768, {"kind": "trinary"})
 
 
-def test_void_is_decided_by_paging_during_the_window_not_by_resident_swap(monkeypatch):
-    """Swap residente com I/O parado é rastro de carga anterior, não pressão.
+def test_void_is_decided_by_the_containers_paging_not_the_hosts(monkeypatch):
+    """A leitura é do cgroup do container; só a paginação dele pode distorcê-la.
 
-    Medido em 2026-08-19: 4,2 GB em swap com `pswpin`/`pswpout` imóveis. A regra
-    antiga — volume de swap mais RAM disponível — errava dos dois lados: anularia
-    esta medição válida, e deixaria passar paginação ativa com RAM de sobra.
+    Medido em 2026-08-19: o A5 foi anulado por 0,6 MB de paginação do host com
+    17 GB livres, enquanto o `memory.swap.peak` do próprio container marcava
+    zero. Era atividade de outros processos, e a regra estava na escala errada.
     """
-    counters = iter([(100, 200), (100, 200), (100, 200), (100, 203)])
-    monkeypatch.setattr(memory, "swap_counters", lambda: next(counters))
+    monkeypatch.setattr(memory, "swap_counters", lambda: (999, 999))
+    quiet_container = {"swap_peak_bytes": 0, "swap_current_bytes": 0, "zswapped_out_pages": 0}
+    monkeypatch.setattr(memory, "container_swap", lambda: dict(quiet_container))
 
-    with memory.SwapWatch() as quiet:
+    with memory.SwapWatch() as watch:
         pass
-    assert not quiet.is_void
-    assert (quiet.pages_in, quiet.pages_out) == (0, 0)
+    assert not watch.is_void, "paginação do host não anula uma leitura de cgroup"
+    assert watch.as_dict()["_host_counters_are_context_only"] == {"pswpin": 999, "pswpout": 999}
 
-    with memory.SwapWatch() as paging:
+
+def test_container_that_was_swapped_voids_the_measurement(monkeypatch):
+    monkeypatch.setattr(memory, "swap_counters", lambda: (0, 0))
+    monkeypatch.setattr(
+        memory,
+        "container_swap",
+        lambda: {"swap_peak_bytes": 4096, "swap_current_bytes": 0, "zswapped_out_pages": 0},
+    )
+    with memory.SwapWatch() as watch:
         pass
-    assert paging.is_void, "três páginas saindo já invalidam a janela"
-    assert paging.as_dict()["swapped_out_pages"] == 3
+    assert watch.is_void, "uma página do container em swap já distorce a leitura"
+
+
+def test_compressed_swap_of_the_container_also_voids(monkeypatch):
+    """O zswap não aparece em memory.swap.peak, e comprime páginas do container."""
+    monkeypatch.setattr(memory, "swap_counters", lambda: (0, 0))
+    readings = iter(
+        [
+            {"swap_peak_bytes": 0, "swap_current_bytes": 0, "zswapped_out_pages": 10},
+            {"swap_peak_bytes": 0, "swap_current_bytes": 0, "zswapped_out_pages": 17},
+        ]
+    )
+    monkeypatch.setattr(memory, "container_swap", lambda: next(readings))
+    with memory.SwapWatch() as watch:
+        pass
+    assert watch.zswapped_out_pages == 7
+    assert watch.is_void
 
 
 def test_swap_counters_read_the_kernel_rates():

@@ -4,11 +4,10 @@
     "RAF-68",
     "RAF-70"
   ],
-  "finished_at": "2026-08-26T02:12:00.249168+00:00",
+  "finished_at": "2026-08-26T02:35:15.847155+00:00",
   "warmup_repeats": 4,
   "latency_repeats": 5,
   "void_measurements": [
-    "A0",
     "A5"
   ],
   "arms": [
@@ -17,65 +16,65 @@
       "collection": "quati_a0_float32",
       "states": {
         "cold": {
-          "anon_mb": 511.3,
-          "file_mb": 30.7,
-          "total_mb": 555.4,
-          "host_available_mb": 16490.6,
-          "host_swap_used_mb": 3026.5,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-ab2286cd234dd96093809b955f83c69b8c763ec5349f267566182018bc49853b.scope/container",
-          "taken_at": "2026-08-26T02:06:21.265650+00:00"
+          "anon_mb": 394.3,
+          "file_mb": 35.1,
+          "total_mb": 465.5,
+          "host_available_mb": 16565.1,
+          "host_swap_used_mb": 2970.5,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0322dfad6b7d2f3a9221bffd448c0a161eb034fe068ad348777135d2faf6e906.scope/container",
+          "taken_at": "2026-08-26T02:30:06.744833+00:00"
         },
         "warm_hnsw": {
-          "anon_mb": 402.8,
-          "file_mb": 104.6,
-          "total_mb": 589.3,
-          "host_available_mb": 16569.8,
-          "host_swap_used_mb": 3026.4,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-ab2286cd234dd96093809b955f83c69b8c763ec5349f267566182018bc49853b.scope/container",
-          "taken_at": "2026-08-26T02:06:42.318222+00:00"
+          "anon_mb": 408.9,
+          "file_mb": 109.9,
+          "total_mb": 599.6,
+          "host_available_mb": 16486.3,
+          "host_swap_used_mb": 2970.5,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0322dfad6b7d2f3a9221bffd448c0a161eb034fe068ad348777135d2faf6e906.scope/container",
+          "taken_at": "2026-08-26T02:30:26.807326+00:00"
         },
         "exhaustive": {
-          "anon_mb": 364.8,
-          "file_mb": 105.9,
-          "total_mb": 577.5,
-          "host_available_mb": 16589.0,
-          "host_swap_used_mb": 3026.3,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-ab2286cd234dd96093809b955f83c69b8c763ec5349f267566182018bc49853b.scope/container",
-          "taken_at": "2026-08-26T02:07:21.880026+00:00"
+          "anon_mb": 380.3,
+          "file_mb": 111.3,
+          "total_mb": 608.4,
+          "host_available_mb": 16525.4,
+          "host_swap_used_mb": 2970.5,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0322dfad6b7d2f3a9221bffd448c0a161eb034fe068ad348777135d2faf6e906.scope/container",
+          "taken_at": "2026-08-26T02:31:02.316185+00:00"
         }
       },
       "reported_state": "warm_hnsw",
-      "reported_resident_mb": 589.3,
-      "provisioning_floor_mb": 402.8,
+      "reported_resident_mb": 599.6,
+      "provisioning_floor_mb": 408.9,
       "_exhaustive_is_not_a_ceiling": "O exact do Qdrant varre os originais e ignora os códigos, então o estado exaustivo mede o caminho dos originais em todo braço, não o teto do braço quantizado.",
       "predicted_resident_mb": 2930,
       "latency_ms_per_query": {
-        "median": 27.15,
-        "p95": 31.95,
-        "min": 22.29,
-        "max": 47.39,
+        "median": 15.93,
+        "p95": 18.0,
+        "min": 12.55,
+        "max": 38.49,
         "samples": 250,
         "passes": 5,
         "queries_per_pass": 50,
         "concurrency": 1,
         "residency_state": "warm_hnsw"
       },
-      "rss_mb": 6807.5,
+      "rss_mb": 6956.5,
       "swap": {
-        "swapped_in_pages": 5,
+        "swapped_in_pages": 0,
         "swapped_out_pages": 0,
-        "is_void": true
+        "is_void": false
       },
       "footprint": {
-        "total_bytes": 4206309213,
-        "total_mb": 4011.4,
+        "total_bytes": 4408062515,
+        "total_mb": 4203.9,
         "by_component_mb": {
-          "vector_storage": 3246.4,
-          "vector_index": 45.4,
-          "payload_storage": 601.6,
+          "vector_storage": 3369.4,
+          "vector_index": 47.6,
+          "payload_storage": 667.6,
           "payload_index": 0.0,
           "wal": 96.0,
-          "outros": 22.2
+          "outros": 23.2
         }
       }
     },
@@ -353,57 +352,57 @@
       "collection": "quati_a4_binary",
       "states": {
         "cold": {
-          "anon_mb": 575.3,
-          "file_mb": 10.2,
-          "total_mb": 595.3,
-          "host_available_mb": 16410.6,
-          "host_swap_used_mb": 3025.2,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-c29b47151611ec8d2e0f772542632de7774159f534dfb1be85bf7cf20cc8cafb.scope/container",
-          "taken_at": "2026-08-26T02:10:41.617060+00:00"
+          "anon_mb": 463.5,
+          "file_mb": 4.8,
+          "total_mb": 497.7,
+          "host_available_mb": 17160.0,
+          "host_swap_used_mb": 2356.6,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-a4fb1a65db6c2f799ab1062c1b9d6072fe65af6875593f8e64da80a21e93292d.scope/container",
+          "taken_at": "2026-08-26T02:34:03.949726+00:00"
         },
         "warm_hnsw": {
-          "anon_mb": 517.0,
-          "file_mb": 874.7,
-          "total_mb": 1491.0,
-          "host_available_mb": 16373.9,
-          "host_swap_used_mb": 3025.1,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-c29b47151611ec8d2e0f772542632de7774159f534dfb1be85bf7cf20cc8cafb.scope/container",
-          "taken_at": "2026-08-26T02:11:20.017841+00:00"
+          "anon_mb": 523.7,
+          "file_mb": 865.9,
+          "total_mb": 1470.4,
+          "host_available_mb": 16999.1,
+          "host_swap_used_mb": 2356.5,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-a4fb1a65db6c2f799ab1062c1b9d6072fe65af6875593f8e64da80a21e93292d.scope/container",
+          "taken_at": "2026-08-26T02:34:34.951834+00:00"
         },
         "exhaustive": {
-          "anon_mb": 445.5,
-          "file_mb": 3030.3,
-          "total_mb": 3612.9,
-          "host_available_mb": 16399.0,
-          "host_swap_used_mb": 3025.1,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-c29b47151611ec8d2e0f772542632de7774159f534dfb1be85bf7cf20cc8cafb.scope/container",
-          "taken_at": "2026-08-26T02:12:00.168953+00:00"
+          "anon_mb": 452.0,
+          "file_mb": 3025.0,
+          "total_mb": 3600.2,
+          "host_available_mb": 16932.9,
+          "host_swap_used_mb": 2464.1,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-a4fb1a65db6c2f799ab1062c1b9d6072fe65af6875593f8e64da80a21e93292d.scope/container",
+          "taken_at": "2026-08-26T02:35:15.768578+00:00"
         }
       },
       "reported_state": "warm_hnsw",
-      "reported_resident_mb": 1491.0,
-      "provisioning_floor_mb": 517.0,
+      "reported_resident_mb": 1470.4,
+      "provisioning_floor_mb": 523.7,
       "_exhaustive_is_not_a_ceiling": "O exact do Qdrant varre os originais e ignora os códigos, então o estado exaustivo mede o caminho dos originais em todo braço, não o teto do braço quantizado.",
       "predicted_resident_mb": 92,
       "latency_ms_per_query": {
-        "median": 8.99,
-        "p95": 11.47,
-        "min": 7.76,
-        "max": 14.0,
+        "median": 8.7,
+        "p95": 11.34,
+        "min": 7.3,
+        "max": 14.05,
         "samples": 250,
         "passes": 5,
         "queries_per_pass": 50,
         "concurrency": 1,
         "residency_state": "warm_hnsw"
       },
-      "rss_mb": 4416.2,
+      "rss_mb": 4419.1,
       "swap": {
-        "swapped_in_pages": 9,
-        "swapped_out_pages": 0,
+        "swapped_in_pages": 114,
+        "swapped_out_pages": 40,
         "is_void": true
       },
       "footprint": {
-        "total_bytes": 3896599007,
+        "total_bytes": 3896595788,
         "total_mb": 3716.1,
         "by_component_mb": {
           "vector_storage": 3022.4,

@@ -60,22 +60,47 @@ class MemorySnapshot:
 
 
 def swap_counters() -> tuple[int, int]:
-    """Páginas que entraram e saíram do swap desde o boot."""
+    """Páginas que o **host** moveu para dentro e para fora do swap, desde o boot.
+
+    Contexto, não portão: paginação de processos alheios não distorce uma leitura
+    de cgroup. Ver `container_swap`, que é a escala que decide.
+    """
     stat = _read_stat(Path("/proc/vmstat"))
     return stat["pswpin"], stat["pswpout"]
+
+
+def container_swap() -> dict[str, int]:
+    """Quanto o **container** foi paginado. É esta a escala que anula a medição.
+
+    A leitura de memória vem do cgroup do container, então só a paginação *dele*
+    pode distorcê-la. A primeira versão desta guarda lia `/proc/vmstat` e anulou
+    três medições por atividade de fundo do host: o A5 foi anulado por 0,6 MB de
+    paginação com 17 GB livres, enquanto o `memory.swap.peak` do próprio
+    container marcava zero.
+
+    `memory.swap.peak` é marca d'água desde o início do cgroup, e cada medição
+    sobe um container novo — então ele cobre exatamente a janela, sem precisar de
+    diferença entre dois instantes.
+    """
+    leaf = cgroup_path()
+    stat = _read_stat(leaf / "memory.stat")
+    peak = leaf / "memory.swap.peak"
+    return {
+        "swap_peak_bytes": int(peak.read_text()) if peak.exists() else 0,
+        "swap_current_bytes": int((leaf / "memory.swap.current").read_text()),
+        "zswapped_out_pages": stat.get("zswpout", 0),
+    }
 
 
 def quiesce(timeout: float = 180.0, still_for: float = 15.0, poll: float = 1.0) -> bool:
     """Espera o host parar de paginar antes de abrir a janela de medição.
 
     O build imediatamente anterior lê 3 GB e escreve 3,6, e o kernel segue
-    trazendo páginas de volta do swap depois que ele termina. Abrir a janela em
-    cima disso anula a medição por causa da **nossa** carga, não do braço: foi o
-    que anulou o A0 duas vezes, com 83 páginas — 0,3 MB numa leitura de 558.
+    trazendo páginas de volta do swap depois que ele termina. Não é o portão —
+    esse é `container_swap` — mas medir sobre um host ainda em recuperação
+    disputa I/O com a própria medição.
 
-    A correção é remover a causa, não afrouxar a regra. Devolve False se não
-    houver silêncio dentro do prazo, para quem chama decidir em vez de medir
-    sobre ruído.
+    Devolve False se não houver silêncio dentro do prazo, para quem chama decidir.
     """
     deadline = time.monotonic() + timeout
     last = swap_counters()
@@ -92,46 +117,51 @@ def quiesce(timeout: float = 180.0, still_for: float = 15.0, poll: float = 1.0) 
 
 
 class SwapWatch:
-    """Anula uma medição feita **enquanto** o host paginou.
+    """Anula a medição se o **container** foi paginado durante a janela.
 
-    O contrato diz que medição tirada com o host paginando é nula. A versão
-    anterior testava `swap_used > 0 and available < 1024`, e isso erra dos dois
-    lados. Medido nesta máquina em 2026-08-19: 4,2 GB de swap residente com
-    `pswpin`/`pswpout` parados — rastro do passe de embedding, não pressão, e a
-    regra antiga anularia medições perfeitamente válidas se a RAM apertasse. No
-    outro sentido, paginação ativa com RAM de sobra passaria pelo teste de volume
-    sem ser notada, que é o erro caro.
+    Três regras foram tentadas aqui, e vale registrar por quê.
 
-    O sinal correto é a *taxa* na janela da medição, não o volume acumulado.
-    Uma leitura pontual não pode saber disso, por isso a regra vive aqui e não
-    em `MemorySnapshot`.
+    A primeira testava `swap_used > 0 and available < 1024` no host: media volume
+    acumulado, não paginação. Nesta máquina há 4 GB de swap residente com os
+    contadores parados — rastro do passe de embedding — e a regra anularia
+    medições válidas se a RAM apertasse, enquanto deixaria passar paginação ativa
+    com RAM de sobra.
+
+    A segunda passou a olhar a *taxa*, mas ainda no host, e anulou o A0 duas
+    vezes e o A5 uma, sempre por frações de megabyte movidas por outros
+    processos, com 17 GB livres. Escala errada: a leitura é do cgroup do
+    container, então só a paginação dele pode distorcê-la.
+
+    A terceira, esta, lê os contadores do próprio container.
     """
 
     def __enter__(self) -> Self:
-        self._before = swap_counters()
+        self._before = container_swap()
         self._after = self._before
         return self
 
     def __exit__(self, *_) -> None:
-        self._after = swap_counters()
+        self._after = container_swap()
 
     @property
-    def pages_in(self) -> int:
-        return self._after[0] - self._before[0]
+    def zswapped_out_pages(self) -> int:
+        return self._after["zswapped_out_pages"] - self._before["zswapped_out_pages"]
 
     @property
-    def pages_out(self) -> int:
-        return self._after[1] - self._before[1]
+    def peak_bytes(self) -> int:
+        return self._after["swap_peak_bytes"]
 
     @property
     def is_void(self) -> bool:
-        return self.pages_in + self.pages_out > 0
+        return self.peak_bytes > 0 or self.zswapped_out_pages > 0
 
     def as_dict(self) -> dict:
+        host_in, host_out = swap_counters()
         return {
-            "swapped_in_pages": self.pages_in,
-            "swapped_out_pages": self.pages_out,
+            "container_swap_peak_bytes": self.peak_bytes,
+            "container_zswapped_out_pages": self.zswapped_out_pages,
             "is_void": self.is_void,
+            "_host_counters_are_context_only": {"pswpin": host_in, "pswpout": host_out},
         }
 
 
