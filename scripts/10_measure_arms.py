@@ -166,9 +166,9 @@ def main() -> int:
         row = measure(client, arm_id)
 
         results.append(row)
-        state = row["states"]["exhaustive"]
+        state = row["states"][row["reported_state"]]
         print(
-            f"    residente {row['reported_resident_mb']:8.1f} MB   "
+            f"    residente {row['reported_resident_mb']:8.1f} MB em {row['reported_state']}   "
             f"(anon {state['anon_mb']:.1f} / file {state['file_mb']:.1f})   "
             f"previsto {row['predicted_resident_mb']}   "
             f"latência mediana {row['latency_ms_per_query']['median']:.1f} ms"
