@@ -346,3 +346,46 @@ def test_footprint_separates_the_servers_fixed_preallocation_from_the_vectors(
 
     with pytest.raises(FileNotFoundError):
         index.footprint("quati_a1_int8")
+
+
+REPEATABILITY = stats.MATRIX_PATH.parent.parent / "runs" / "m2_build_repeatability.json"
+
+
+@pytest.mark.skipif(not REPEATABILITY.exists(), reason="repetição de build não registrada")
+def test_footprint_repeatability_is_reported_as_a_range_not_a_number():
+    """O critério de M2.1 não foi atendido, e o teste trava o fato em vez da esperança.
+
+    A ocupação em disco varia até 18% entre builds idênticos: o conteúdo repete,
+    mas a pré-alocação de chunks de 32 MB por segmento depende de como o
+    otimizador distribuiu os pontos naquela execução.
+    """
+    import json
+
+    record = json.loads(REPEATABILITY.read_text(encoding="utf-8"))
+    deltas = record["footprint_repeatability"]["vector_storage_delta_pct"]
+    assert max(abs(v) for v in deltas.values()) > 5, (
+        "se a repetição virou apertada, o artigo pode reportar número em vez de faixa"
+    )
+
+    # A claim C8 só sobrevive porque as faixas não se sobrepõem.
+    builds = record["builds"]
+    a0 = [b["total_mb"] for b in builds["A0"]]
+    a1 = [b["total_mb"] for b in builds["A1"]]
+    assert max(a0) < min(a1), "C8 depende de o braço quantizado ocupar mais disco que o A0"
+
+
+@pytest.mark.skipif(not REPEATABILITY.exists(), reason="repetição de build não registrada")
+def test_product_quantization_optimizer_time_is_the_deterministic_one():
+    """A evidência de que o tempo de PQ é dominado pelo treino do codebook.
+
+    Determinismo é assinatura de trabalho fixo; variabilidade é assinatura do
+    escalonamento do otimizador. Os braços de PQ repetem exato, todos os outros
+    variam por um fator de 2 a 3.
+    """
+    import json
+
+    builds = json.loads(REPEATABILITY.read_text(encoding="utf-8"))["builds"]
+    spread = {arm: {b["index_minutes"] for b in runs} for arm, runs in builds.items()}
+    for arm in ("A2", "A3"):
+        assert len(spread[arm]) == 1, f"{arm} deixou de ser determinístico; reveja o limite"
+    assert any(len(spread[arm]) > 1 for arm in ("A0", "A1", "A4"))

@@ -50,19 +50,27 @@ def owner_of(arm_id: str) -> str:
     return retrieval.arm_config(arm_id).get("_shares_collection_with") or arm_id
 
 
-def sole_collection(client, arm_id: str) -> None:
-    """Garante que só a coleção deste braço existe. Verificado, não suposto."""
+def sole_collection(client, arm_id: str) -> dict | None:
+    """Garante que só a coleção deste braço existe. Verificado, não suposto.
+
+    Devolve o relatório do build quando precisou construir. Cada medição derruba
+    as outras coleções, então esta passada reconstrói os mesmos braços várias
+    vezes ao longo do estudo — e é de graça registrar isso, que é justamente a
+    evidência de repetibilidade que M2.1 e M2.3 pedem.
+    """
     wanted = retrieval.arm_config(arm_id)["collection"]
     for existing in [c.name for c in client.get_collections().collections]:
         if existing != wanted:
             print(f"    derrubando {existing}")
             client.delete_collection(existing)
+    report = None
     if not client.collection_exists(wanted):
         print(f"    construindo {wanted}")
-        index.build(client, owner_of(arm_id))
+        report = index.build(client, owner_of(arm_id))
     remaining = [c.name for c in client.get_collections().collections]
     if remaining != [wanted]:
         raise RuntimeError(f"esperada só {wanted}, servidor tem {remaining}")
+    return report
 
 
 def latency_ms(client, arm_id: str, mode: str, repeats: int) -> list[float]:
@@ -162,8 +170,9 @@ def main() -> int:
     for arm_id in wanted:
         print(f"\n{arm_id}")
         client = server.client()
-        sole_collection(client, arm_id)
+        build_report = sole_collection(client, arm_id)
         row = measure(client, arm_id)
+        row["build"] = build_report
 
         results.append(row)
         state = row["states"][row["reported_state"]]
