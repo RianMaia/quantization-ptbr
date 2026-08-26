@@ -17,6 +17,7 @@ import platform
 import subprocess
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from importlib import metadata
 from pathlib import Path
 
 from quantptbr import corpus, embedding, memory, server, stats
@@ -32,7 +33,22 @@ CONTROLLED_FIELDS = (
     "image_digest",
     "hnsw",
     "distance",
+    "measurement_tools",
 )
+
+#: Bibliotecas que decidem um número reportado, e não apenas o transportam.
+MEASUREMENT_TOOLS = ("ir-measures", "pytrec-eval-terrier", "qdrant-client")
+
+
+def measurement_tools() -> dict[str, str]:
+    """Versões das bibliotecas que calculam as métricas.
+
+    O nDCG tem variantes defensáveis de desconto e de DCG ideal: uma atualização
+    de biblioteca pode mudar o número sem que o run mude uma linha. Dois braços
+    avaliados por versões diferentes não podem entrar na mesma estatística, e é
+    por isso que isto é campo controlado e não apenas registro.
+    """
+    return {name: metadata.version(name) for name in MEASUREMENT_TOOLS}
 
 
 def git_commit() -> str:
@@ -103,6 +119,7 @@ class RunManifest:
             "image_digest": server.DIGEST,
             "hnsw": matrix["held_constant"]["hnsw"],
             "distance": matrix["held_constant"]["distance"],
+            "measurement_tools": measurement_tools(),
         }
         run = {
             "started_at": datetime.now(UTC).isoformat(),

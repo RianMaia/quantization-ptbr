@@ -72,15 +72,19 @@ def test_reading_memory_is_a_single_call(running_server):
 
 @pytest.fixture()
 def fresh_server(running_server):
-    """Container recém-subido, que é o único estado em que o contrato compara os dois.
+    """Servidor vazio e recém-subido, o estado em que o contrato compara os dois.
 
-    Sem isso o teste falhou em 2026-08-19 com 22% de divergência, depois de horas
-    de atividade: com o zswap ativo, `memory.current` conta páginas comprimidas
-    que a conta do `podman stats` desconta. Não é ruído do instrumento — é o
-    instrumento medindo um estado que o contrato não declara. Toda medição real
-    já roda em container novo; o teste agora estabelece a mesma precondição em
-    vez de herdar o estado que a sessão deixou.
+    Sem reiniciar, o teste falhou em 2026-08-19 com 22% de divergência depois de
+    horas de atividade: com o zswap ativo, `memory.current` conta páginas
+    comprimidas que a conta do `podman stats` desconta. Não é ruído do
+    instrumento — é o instrumento medindo um estado que o contrato não declara.
+
+    E o reinício é recusado se houver coleção no servidor. A verificação de S1.1
+    foi feita em servidor vazio, então é só nesse estado que a comparação vale;
+    reiniciar por conta própria já derrubou um build de 1M pela metade.
     """
+    if server.client().get_collections().collections:
+        pytest.skip("há coleção no servidor: reiniciar interromperia build ou medição em curso")
     server.restart()
 
 

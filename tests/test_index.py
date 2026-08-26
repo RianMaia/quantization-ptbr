@@ -63,8 +63,8 @@ class FakeClient:
         assert exact is True
         return FakeCount(self.points)
 
-    def retrieve(self, _collection, ids, with_payload, with_vectors):
-        assert with_payload and with_vectors
+    def retrieve(self, _collection, ids, with_payload=False, with_vectors=False):
+        self.retrieved_with = {"payload": with_payload, "vectors": with_vectors}
         wanted = set(ids)
         return [r for r in self.records if r.id in wanted]
 
@@ -214,6 +214,32 @@ def test_point_ids_are_the_frozen_corpus_positions():
     assert [u["points"].ids for u in client.upserts] == [[0, 1], [2, 3], [4]]
 
 
+def test_upload_resumes_where_it_stopped_without_reuploading():
+    client = FakeClient()
+    array = SliceRecorder(10, DIMS, limit=4)
+    sent = index.upload(client, "c", array, [f"p{i}" for i in range(10)], batch=4, first=4)
+    assert sent == 6
+    assert [i for u in client.upserts for i in u["points"].ids] == list(range(4, 10))
+    assert array.slices == [(4, 8), (8, 10)], "não relê o que já foi enviado"
+
+
+def test_resume_point_verifies_the_ids_instead_of_trusting_the_count():
+    """Retomar do lugar errado deixaria buracos que só aparecem como recall baixo."""
+    client = FakeClient(points=400, records=[FakeRecord(399, {}, [])])
+    assert index.resume_point(client, "c", 1000) == 400
+
+    with_hole = FakeClient(points=400, records=[FakeRecord(400, {}, [])])
+    with pytest.raises(RuntimeError, match="IDs não são"):
+        index.resume_point(with_hole, "c", 1000)
+
+
+def test_resume_point_handles_the_empty_and_the_finished_collection():
+    assert index.resume_point(FakeClient(points=0), "c", 1000) == 0
+    assert index.resume_point(FakeClient(points=1000), "c", 1000) == 1000
+    with pytest.raises(RuntimeError, match="mais que os"):
+        index.resume_point(FakeClient(points=1001), "c", 1000)
+
+
 def test_yellow_collection_is_not_treated_as_ready():
     client = FakeClient(
         states=[
@@ -264,6 +290,9 @@ def test_spot_check_confronts_the_server_against_the_frozen_order(monkeypatch):
     result = index.check_points(client, "c", array, passage_ids)
     assert result["sampled"] == 8
     assert result["worst_cosine"] == pytest.approx(1.0)
+    assert client.retrieved_with == {"payload": True, "vectors": True}, (
+        "sem os dois o confronto seria contra a nossa própria lista, não contra o servidor"
+    )
 
 
 def test_spot_check_catches_an_off_by_one_in_the_payload(monkeypatch):

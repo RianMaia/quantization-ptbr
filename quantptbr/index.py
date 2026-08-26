@@ -160,14 +160,38 @@ def create(client, arm: dict, dims: int) -> None:
     )
 
 
-def upload(client, collection: str, array, passage_ids: list[str], batch: int = BATCH) -> int:
+def resume_point(client, collection: str, total: int) -> int:
+    """Onde retomar um upload interrompido, verificado em vez de suposto.
+
+    O envio é sequencial por ID e cada lote espera confirmação, então uma coleção
+    com N pontos tem exatamente os IDs 0..N-1. A suposição é conferida — o ponto
+    N-1 existe, o N não — porque retomar do lugar errado deixaria buracos no
+    índice que só apareceriam depois, como recall baixo num braço só.
+    """
+    done = client.count(collection, exact=True).count
+    if done in (0, total):
+        return done
+    if done > total:
+        raise RuntimeError(f"{collection}: {done:,} pontos, mais que os {total:,} do corpus")
+    present = {int(record.id) for record in client.retrieve(collection, ids=[done - 1, done])}
+    if present != {done - 1}:
+        raise RuntimeError(
+            f"{collection}: tem {done:,} pontos mas os IDs não são 0..{done - 1:,} "
+            f"(sondagem devolveu {sorted(present)}). Reconstrua com --rebuild."
+        )
+    return done
+
+
+def upload(
+    client, collection: str, array, passage_ids: list[str], batch: int = BATCH, first: int = 0
+) -> int:
     """Envia os pontos em blocos, lendo o array mapeado faixa por faixa.
 
     O array tem 3 GB. Materializá-lo em RAM para enviar colocaria o processo
     Python e o servidor disputando a mesma memória que o estudo está medindo.
     """
     total = len(passage_ids)
-    for start in range(0, total, batch):
+    for start in range(first, total, batch):
         stop = min(start + batch, total)
         block = np.asarray(array[start:stop], dtype=np.float32)
         client.upsert(
@@ -179,7 +203,7 @@ def upload(client, collection: str, array, passage_ids: list[str], batch: int = 
             ),
             wait=True,
         )
-    return total
+    return total - first
 
 
 def wait_until_indexed(
@@ -281,7 +305,7 @@ def check_points(client, collection: str, array, passage_ids: list[str]) -> dict
     return {"sampled": sample, "worst_cosine": worst_cosine, "counted": counted}
 
 
-def build(client, arm_id: str, recreate: bool = False, array=None) -> dict:
+def build(client, arm_id: str, recreate: bool = False, resume: bool = False, array=None) -> dict:
     """Constrói um braço inteiro a partir da sua definição na matriz."""
     arm = retrieval.arm_config(arm_id)
     buildable(arm)
@@ -291,13 +315,6 @@ def build(client, arm_id: str, recreate: bool = False, array=None) -> dict:
     corpus.verify_manifest()
     envelope = embedding.Envelope.load()
 
-    if client.collection_exists(collection):
-        if not recreate:
-            raise RuntimeError(
-                f"{collection} já existe. Passe recreate=True para descartá-la e reconstruir."
-            )
-        client.delete_collection(collection)
-
     passage_ids = corpus.load_passage_ids()
     array = vectors.load() if array is None else array
     if array.shape != (len(passage_ids), envelope.dimensions):
@@ -305,12 +322,26 @@ def build(client, arm_id: str, recreate: bool = False, array=None) -> dict:
             f"artefato {array.shape} não bate com ({len(passage_ids)}, {envelope.dimensions})"
         )
 
-    print(f"{arm_id} → {collection}: criando coleção …")
-    create(client, arm, envelope.dimensions)
+    exists = client.collection_exists(collection)
+    resume_from = 0
+    if exists and recreate:
+        client.delete_collection(collection)
+        exists = False
+    elif exists and resume:
+        resume_from = resume_point(client, collection, len(passage_ids))
+        print(f"{arm_id} → {collection}: retomando em {resume_from:,}")
+    elif exists:
+        raise RuntimeError(
+            f"{collection} já existe. Passe recreate=True para reconstruir do zero, "
+            "ou resume=True para continuar um envio interrompido."
+        )
+    if not exists:
+        print(f"{arm_id} → {collection}: criando coleção …")
+        create(client, arm, envelope.dimensions)
 
-    print(f"{arm_id}: enviando {len(passage_ids):,} pontos em lotes de {BATCH:,} …")
+    print(f"{arm_id}: enviando {len(passage_ids) - resume_from:,} pontos em lotes de {BATCH:,} …")
     started = time.perf_counter()
-    upload(client, collection, array, passage_ids)
+    upload(client, collection, array, passage_ids, first=resume_from)
     upload_seconds = time.perf_counter() - started
 
     print(f"{arm_id}: aguardando o otimizador …")
@@ -329,6 +360,9 @@ def build(client, arm_id: str, recreate: bool = False, array=None) -> dict:
         "arm": arm_id,
         "collection": collection,
         "points": len(passage_ids),
+        # Um build retomado não tem tempo de parede comparável: `upload_seconds`
+        # cobre só o que este processo enviou. `resumed_from` > 0 marca isso.
+        "resumed_from": resume_from,
         "upload_seconds": round(upload_seconds, 1),
         "index_seconds": round(index_seconds, 1),
         "indexed_vectors_count": indexed,

@@ -31,6 +31,11 @@ def main() -> int:
         help="descarta uma coleção já existente em vez de abortar",
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="continua um envio interrompido em vez de abortar; os IDs já presentes são conferidos",
+    )
+    parser.add_argument(
         "--allow-dirty",
         action="store_true",
         help="permite árvore git suja; a execução fica registrada como não citável",
@@ -44,7 +49,7 @@ def main() -> int:
     client = server.client()
 
     for arm_id in args.arms:
-        report = index.build(client, arm_id, recreate=args.rebuild)
+        report = index.build(client, arm_id, recreate=args.rebuild, resume=args.resume)
         path = manifest.RunManifest.capture(
             arm_id=arm_id, allow_dirty=args.allow_dirty, build=report
         ).save(RUNS_DIR / f"m2_{arm_id.lower()}_build.json")
