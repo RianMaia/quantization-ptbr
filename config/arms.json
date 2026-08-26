@@ -31,8 +31,18 @@
       "arm": "A0",
       "search_mode": "exact",
       "published_ndcg10": 0.3955,
-      "source": "Bueno et al., Quati, Tabela 7, 1M, multilingual-e5-base",
-      "floor": {"system": "BM25", "ndcg10": 0.3156}
+      "source": "Bueno et al., Quati, Tabela 6, seção '1M Passages', linha E5-base",
+      "qrels": "qrels_10m",
+      "protocol": "run de recuperação sobre o corpus de 1M, pontuado contra os qrels de 10M",
+      "tolerance": {"validated": 0.02, "investigate": 0.05},
+      "_corrected_2026_08_19": "S1.2 atribuiu o 0,3955 à Tabela 7 e tratou-o como comparável ao nosso nDCG sobre os qrels de 1M. Está errado nas duas pontas. O 0,3955 é da **Tabela 6**, cuja legenda diz 'The relevance scores are from the LLM for the 10M dataset', e o texto da seção 5.3 é explícito: 'We included the evaluation of the 1M retrievers runs using the 10M qrels, as can be seen in Table 6'. Os qrels de 10M têm 97,78 julgamentos por consulta contra 38,66 dos de 1M, então o DCG ideal é calculado sobre um pool de relevantes muito maior e o mesmo run pontua mais baixo. A **Tabela 7** — essa sim sobre os qrels de 1M, que são os deste estudo — não tem linha nenhuma de E5-base. Daí a forma atual: a calibração pontual reproduz o protocolo da Tabela 6, e a Tabela 7 entra como checagem de faixa.",
+      "range_check": {
+        "source": "Bueno et al., Quati, Tabela 7 — qrels de 1M, os mesmos que este estudo usa",
+        "floor": {"system": "BM25", "ndcg10": 0.3991},
+        "nearest_above": {"system": "ColBERT-X mMARCO pt-BR", "ndcg10": 0.4927},
+        "ceiling": {"system": "BM25 + mT5-XL", "ndcg10": 0.6593},
+        "_expectation": "Um bi-encoder denso de porte base, sem reranker, deve ficar acima do BM25 e abaixo do ColBERT-X. Fora dessa faixa é para investigar, não para reportar."
+      }
     }
   },
 

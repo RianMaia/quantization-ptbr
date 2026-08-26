@@ -58,7 +58,28 @@ def test_relevance_threshold_is_on_the_declared_grade_scale():
     assert threshold == 2, "o corte é semântico: a rubrica quebra entre não-responde e responde"
 
 
-def test_calibration_target_sits_above_the_bm25_floor():
+def test_calibration_compares_against_the_qrels_the_published_number_used():
+    """O 0,3955 é da Tabela 6: run de 1M pontuado contra os qrels de 10M.
+
+    Confrontá-lo contra o nosso nDCG sobre os qrels de 1M compararia grandezas
+    diferentes — 97,78 contra 38,66 julgamentos por consulta — e foi exatamente
+    o erro que S1.2 cometeu.
+    """
     target = stats.matrix()["evaluation"]["calibration_target"]
-    assert target["published_ndcg10"] > target["floor"]["ndcg10"]
     assert target["arm"] == "A0" and target["search_mode"] == "exact"
+    assert target["qrels"] == corpus.CALIBRATION_QRELS
+    assert target["qrels"] != "qrels", "os qrels do estudo não são os da linha publicada"
+    assert "Tabela 6" in target["source"]
+
+
+def test_range_check_uses_the_studys_own_qrels_and_brackets_a_dense_biencoder():
+    band = stats.matrix()["evaluation"]["calibration_target"]["range_check"]
+    assert band["floor"]["ndcg10"] < band["nearest_above"]["ndcg10"] < band["ceiling"]["ndcg10"]
+    assert band["floor"]["system"] == "BM25"
+
+
+def test_calibration_qrels_are_a_frozen_hashed_input():
+    """Se eles não estivessem no manifesto, a calibração dependeria de um arquivo solto."""
+    files = corpus.read_manifest()["files"]
+    assert corpus.CALIBRATION_QRELS in files
+    assert files[corpus.CALIBRATION_QRELS]["sha256"]

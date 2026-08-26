@@ -23,9 +23,18 @@ REVISION = "e5279055bba3e7ba1bece5c0eddd0ba232df49c3"
 REMOTE_FILES = {
     "corpus": "quati_1M.tsv",
     "qrels": "qrels/quati_1M_qrels.txt",
+    "qrels_10m": "qrels/quati_10M_qrels.txt",
     "topics": "topics/quati_all_topics.tsv",
     "test_topics": "topics/quati_test_topics.tsv",
 }
+
+#: Os qrels de 10M não são gabarito deste estudo — o corpus é o de 1M e é contra
+#: `qrels` que todo braço é medido. Eles existem aqui por um motivo só: a única
+#: linha publicada de E5-base sobre o Quati (Tabela 6, seção "1M Passages") é um
+#: run de 1M pontuado com estes julgamentos, e reproduzir esse número é o que
+#: valida o aparelho em S1.7. Usá-los em qualquer outro lugar seria medir contra
+#: um pool de relevantes que o corpus de 1M nem contém.
+CALIBRATION_QRELS = "qrels_10m"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = REPO_ROOT / "data" / "raw"
@@ -110,13 +119,13 @@ def load_passage_ids() -> list[str]:
     return [passage_id for passage_id, _ in iter_passages()]
 
 
-def load_qrels() -> dict[str, dict[str, int]]:
+def load_qrels(name: str = "qrels") -> dict[str, dict[str, int]]:
     """Julgamentos oficiais no formato TREC, como {query_id: {passage_id: grau}}.
 
     Os graus são ordinais e incluem 0. Qual grau conta como relevante é uma
     decisão fixada em S1.7 e registrada no dicionário de métricas — não aqui.
     """
-    path = local_path("qrels")
+    path = local_path(name)
     qrels: dict[str, dict[str, int]] = {}
     with path.open(encoding="utf-8") as fh:
         for lineno, raw in enumerate(fh, start=1):

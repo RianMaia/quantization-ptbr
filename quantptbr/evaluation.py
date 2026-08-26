@@ -88,37 +88,69 @@ def save(evaluation: dict, path: Path) -> None:
     path.write_text(json.dumps(evaluation, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def calibration_report(run: Run) -> dict:
-    """Confronta o A0 com o nDCG@10 publicado, nas duas convenções de denominador.
+def _ndcg10(run: Run, qrels: dict[str, dict[str, int]]) -> float:
+    scoped = {q: v for q, v in run.items() if q in qrels}
+    return float(ir_measures.calc_aggregate([nDCG @ 10], qrels, scoped)[nDCG @ 10])
 
-    Reportar as duas não é indecisão: não sabemos se os autores do Quati
+
+def calibration_report(run: Run) -> dict:
+    """Confronta o A0 com o único número de E5-base publicado sobre o Quati.
+
+    Esse número sai de um run de 1M pontuado contra os qrels de **10M** (Tabela
+    6). Reproduzir o protocolo deles é o que torna a comparação uma checagem
+    independente; compará-lo contra o nosso nDCG sobre os qrels de 1M compararia
+    grandezas diferentes — os pools de relevantes têm 97,78 e 38,66 julgamentos
+    por consulta, e o mesmo run pontua mais baixo no primeiro.
+
+    A checagem de faixa contra a Tabela 7 é separada e usa os qrels de 1M, que
+    são os do estudo. Ela não tem linha de E5-base, então é faixa e não alvo.
+
+    Os dois denominadores continuam reportados: não sabemos se os autores
     incluíram a consulta 2 na média, e a diferença é da ordem da própria
-    tolerância de calibração. Ver qual das duas aproxima o valor publicado é
-    informação sobre a convenção deles, não um grau de liberdade nosso — a média
-    de 49 continua sendo a pré-registrada, aconteça o que acontecer.
+    tolerância. A unidade pré-registrada segue sendo 49, aconteça o que
+    acontecer — ver qual denominador aproxima o publicado é informação sobre a
+    convenção deles, não um grau de liberdade nosso.
     """
     target = stats.matrix()["evaluation"]["calibration_target"]
-    over_49 = evaluate(run)["aggregate"]["nDCG@10"]
-    over_50 = evaluate(run, include_excluded=True)["aggregate"]["nDCG@10"]
-
     published = target["published_ndcg10"]
+    tolerance = target["tolerance"]
+    band = target["range_check"]
+
+    calibration_qrels = corpus.load_qrels(target["qrels"])
+    over_49 = _ndcg10(
+        run, {q: v for q, v in calibration_qrels.items() if q in set(scoreable_query_ids())}
+    )
+    over_50 = _ndcg10(run, calibration_qrels)
+    study = evaluate(run)["aggregate"]["nDCG@10"]
+
     return {
+        "protocol": target["protocol"],
         "published": published,
-        "floor_bm25": target["floor"]["ndcg10"],
         "preregistered_over_49": over_49,
         "diagnostic_over_50": over_50,
         "delta_49": over_49 - published,
         "delta_50": over_50 - published,
-        "verdict": _calibration_verdict(over_49, over_50, published, target["floor"]["ndcg10"]),
+        "study_qrels_ndcg10": study,
+        "range_check": {
+            "floor": band["floor"],
+            "nearest_above": band["nearest_above"],
+            "ceiling": band["ceiling"],
+            "inside": band["floor"]["ndcg10"] < study < band["ceiling"]["ndcg10"],
+        },
+        "verdict": _calibration_verdict(over_49, over_50, published, study, band, tolerance),
     }
 
 
-def _calibration_verdict(over_49: float, over_50: float, published: float, floor: float) -> str:
+def _calibration_verdict(
+    over_49: float, over_50: float, published: float, study: float, band: dict, tolerance: dict
+) -> str:
+    if study <= band["floor"]["ndcg10"]:
+        return f"PARE: não supera o {band['floor']['system']} nos qrels do estudo"
+    if study >= band["ceiling"]["ndcg10"]:
+        return f"PARE: acima do {band['ceiling']['system']}; implausível para um bi-encoder base"
     closest = min(abs(over_49 - published), abs(over_50 - published))
-    if max(over_49, over_50) < floor:
-        return "PARE: abaixo do piso do BM25; o instrumento está quebrado"
-    if closest <= 0.02:
+    if closest <= tolerance["validated"]:
         return "aparelho validado"
-    if closest <= 0.05:
+    if closest <= tolerance["investigate"]:
         return "investigar convenção de ganho, prefixos, max_length; registrar a causa"
     return "PARE: fora de 0,05 do valor publicado"

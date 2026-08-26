@@ -33,18 +33,27 @@ def calibrates(arm_id: str, mode: str) -> bool:
 
 
 def report_calibration(report: dict) -> None:
+    band = report["range_check"]
     print("\n=== calibração do aparelho (S1.7) ===")
-    print(f"  publicado (Quati, Tabela 7)   {report['published']:.4f}")
-    print(f"  piso do BM25                  {report['floor_bm25']:.4f}")
+    print(f"  protocolo: {report['protocol']}")
+    print(f"  publicado (Quati, Tabela 6, E5-base)   {report['published']:.4f}")
     print(
-        f"  pré-registrado, 49 consultas  {report['preregistered_over_49']:.4f}"
+        f"  pré-registrado, 49 consultas           {report['preregistered_over_49']:.4f}"
         f"   ({report['delta_49']:+.4f})"
     )
     print(
-        f"  diagnóstico, 50 consultas     {report['diagnostic_over_50']:.4f}"
+        f"  diagnóstico, 50 consultas              {report['diagnostic_over_50']:.4f}"
         f"   ({report['delta_50']:+.4f})"
     )
-    print(f"  → {report['verdict']}")
+    print("\n  faixa da Tabela 7 (qrels de 1M, os do estudo)")
+    print(f"    {band['floor']['system']:<28} {band['floor']['ndcg10']:.4f}")
+    print(
+        f"    A0 exato                     {report['study_qrels_ndcg10']:.4f}"
+        f"   {'dentro' if band['inside'] else 'FORA'} da faixa"
+    )
+    print(f"    {band['nearest_above']['system']:<28} {band['nearest_above']['ndcg10']:.4f}")
+    print(f"    {band['ceiling']['system']:<28} {band['ceiling']['ndcg10']:.4f}")
+    print(f"\n  → {report['verdict']}")
 
 
 def main() -> int:

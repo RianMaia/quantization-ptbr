@@ -80,3 +80,30 @@ def test_passage_order_is_reproducible():
     first = [pid for pid, _ in zip(corpus.iter_passages(), range(1000))]
     second = [pid for pid, _ in zip(corpus.iter_passages(), range(1000))]
     assert first == second
+
+
+def test_calibration_qrels_are_a_larger_pool_than_the_studys():
+    """A razão de existirem: a linha publicada de E5-base usa este pool, não o nosso.
+
+    97,78 contra 38,66 julgamentos por consulta. O DCG ideal sai de um conjunto
+    de relevantes muito maior, então o mesmo run pontua mais baixo — que é
+    exatamente por que comparar as duas grandezas foi um erro.
+    """
+    study = corpus.load_qrels()
+    calibration = corpus.load_qrels(corpus.CALIBRATION_QRELS)
+    assert set(study) == set(calibration), "as duas cobrem as mesmas 50 consultas"
+
+    def mean(qrels):
+        return sum(len(v) for v in qrels.values()) / len(qrels)
+
+    assert round(mean(study), 2) == corpus.EXPECTED_MEAN_JUDGED == 38.66
+    assert round(mean(calibration), 2) == 97.78
+
+
+def test_query_two_is_unscoreable_only_against_the_1m_corpus():
+    """A exclusão da consulta 2 é uma propriedade do corpus de 1M, não da consulta."""
+    assert corpus.unscoreable_query_ids() == list(corpus.KNOWN_UNSCOREABLE_QUERY_IDS)
+    calibration = corpus.load_qrels(corpus.CALIBRATION_QRELS)
+    assert any(g > 0 for g in calibration["2"].values()), (
+        "nos qrels de 10M a consulta 2 tem relevantes; ela é pontuável naquele pool"
+    )

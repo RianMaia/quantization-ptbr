@@ -12,6 +12,11 @@
       "bytes": 68982,
       "sha256": "aafab4294572a043974bcb5fccfe76e55267e37d5d76d648ab1d3697d13f6f76"
     },
+    "qrels_10m": {
+      "remote": "qrels/quati_10M_qrels.txt",
+      "bytes": 174350,
+      "sha256": "0e25bdac98b96721e30527bf61fcb4406ba2b36792571b048c40d8bad0ad2e05"
+    },
     "topics": {
       "remote": "topics/quati_all_topics.tsv",
       "bytes": 10950,
