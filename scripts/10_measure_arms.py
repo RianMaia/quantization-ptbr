@@ -151,6 +151,36 @@ def measure(client, arm_id: str) -> dict:
     }
 
 
+def persist(results: list[dict]) -> list[str]:
+    """Grava o que já foi medido. Chamada a cada braço, não só no fim.
+
+    Um braço trava de verdade — não só demora — e quando trava a exceção sobe
+    do meio do laço. Escrever só no fim jogaria fora os braços já concluídos
+    naquela mesma execução; a M4 não deveria pagar de novo por um braço que já
+    saiu limpo só porque o vizinho travou.
+    """
+    ordered = sorted(results, key=lambda row: row["arm"])
+    void = [r["arm"] for r in ordered if r["swap"]["is_void"]]
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT.write_text(
+        json.dumps(
+            {
+                "issues": ["RAF-67", "RAF-68", "RAF-70"],
+                "finished_at": datetime.now(UTC).isoformat(),
+                "warmup_repeats": WARMUP_REPEATS,
+                "latency_repeats": LATENCY_REPEATS,
+                "void_measurements": void,
+                "arms": ordered,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return void
+
+
 def main() -> int:
     manifest.require_clean_tree()
     server.start()
@@ -184,26 +214,9 @@ def main() -> int:
         )
         if row["swap"]["is_void"]:
             print("    MEDIÇÃO NULA: o host paginou durante a janela")
+        persist(results)
 
-    results.sort(key=lambda row: row["arm"])
-    void = [r["arm"] for r in results if r["swap"]["is_void"]]
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(
-        json.dumps(
-            {
-                "issues": ["RAF-67", "RAF-68", "RAF-70"],
-                "finished_at": datetime.now(UTC).isoformat(),
-                "warmup_repeats": WARMUP_REPEATS,
-                "latency_repeats": LATENCY_REPEATS,
-                "void_measurements": void,
-                "arms": results,
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    void = persist(results)
     print(f"\n→ {OUTPUT}")
     if void:
         print(f"braços a remedir: {void}")
