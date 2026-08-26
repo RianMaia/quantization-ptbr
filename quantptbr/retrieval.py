@@ -16,6 +16,7 @@ ponto**, que é a ordem do corpus congelada em S1.0.
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -115,6 +116,7 @@ def retrieve(
     depth: int = DEPTH,
     ef: int | None = None,
     rescore: bool | None = None,
+    record_ms: list[float] | None = None,
 ) -> list[Row]:
     """Recupera para todas as consultas julgadas, com desempate determinístico."""
     arm = arm_config(arm_id)
@@ -135,9 +137,15 @@ def retrieve(
 
     rows: list[Row] = []
     for query_id, vector in zip(query_ids, query_vectors, strict=True):
+        # `record_ms` existe para que M3.3 cronometre **este** caminho, e não uma
+        # cópia dele: latência medida por um segundo laço divergiria do que a
+        # qualidade mediu sem que nada parecesse errado.
+        started = time.perf_counter()
         hits = client.query_points(
             collection, query=vector.tolist(), limit=depth, search_params=params
         ).points
+        if record_ms is not None:
+            record_ms.append((time.perf_counter() - started) * 1000)
         # A ordem do servidor não é estável entre empates; esta é.
         ordered = sorted(hits, key=lambda h: (-h.score, h.id))
         rows.extend(

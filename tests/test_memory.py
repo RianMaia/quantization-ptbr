@@ -31,13 +31,30 @@ def test_estimator_refuses_an_unknown_scheme():
         memory.analytical_mb(1000, 768, {"kind": "trinary"})
 
 
-def test_void_flag_needs_both_swap_and_memory_pressure():
-    def snapshot(available: float, swap: float) -> memory.MemorySnapshot:
-        return memory.MemorySnapshot(0, 0, 0, available, swap, "", "")
+def test_void_is_decided_by_paging_during_the_window_not_by_resident_swap(monkeypatch):
+    """Swap residente com I/O parado é rastro de carga anterior, não pressão.
 
-    assert snapshot(available=500, swap=1000).is_void
-    assert not snapshot(available=8000, swap=1000).is_void, "swap parado não invalida nada"
-    assert not snapshot(available=500, swap=0).is_void
+    Medido em 2026-08-19: 4,2 GB em swap com `pswpin`/`pswpout` imóveis. A regra
+    antiga — volume de swap mais RAM disponível — errava dos dois lados: anularia
+    esta medição válida, e deixaria passar paginação ativa com RAM de sobra.
+    """
+    counters = iter([(100, 200), (100, 200), (100, 200), (100, 203)])
+    monkeypatch.setattr(memory, "swap_counters", lambda: next(counters))
+
+    with memory.SwapWatch() as quiet:
+        pass
+    assert not quiet.is_void
+    assert (quiet.pages_in, quiet.pages_out) == (0, 0)
+
+    with memory.SwapWatch() as paging:
+        pass
+    assert paging.is_void, "três páginas saindo já invalidam a janela"
+    assert paging.as_dict()["swapped_out_pages"] == 3
+
+
+def test_swap_counters_read_the_kernel_rates():
+    pages_in, pages_out = memory.swap_counters()
+    assert pages_in >= 0 and pages_out >= 0
 
 
 @pytest.fixture()
@@ -66,7 +83,6 @@ def test_reading_memory_is_a_single_call(running_server):
         "total_mb",
         "host_available_mb",
         "host_swap_used_mb",
-        "is_void",
     }
 
 

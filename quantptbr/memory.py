@@ -1,12 +1,21 @@
 """Leitura da memória residente sob o contrato de S1.1.
 
-A métrica principal do artigo é `anon` do cgroup v2 do container do Qdrant, e
-não o RSS. O motivo é mensurável nesta máquina: o Qdrant mapeia os vetores em
-disco, então o RSS conta páginas *file-backed* e descartáveis cujo tamanho
-depende de quantas consultas já rodaram. Com o servidor vazio, `RssFile` marca
-~32 MiB contra `file` de 1,2 MiB no cgroup — a discrepância não é ruído, é a
-diferença entre "memória que o processo precisa" e "páginas que por acaso estão
-no cache".
+A métrica principal é `memory.current` do cgroup v2 do container do Qdrant —
+`total` aqui — **num estado de residência declarado**, com `anon` e `file` ao
+lado. O RSS é rejeitado: o Qdrant mapeia os vetores em disco, então o RSS conta
+páginas *file-backed* e descartáveis cujo tamanho depende de quantas consultas
+já rodaram.
+
+**Emenda de 2026-08-18 (S1.7).** O contrato original nomeava `anon` como métrica
+principal, supondo que page cache não é requisito de provisionamento. A medição
+refutou a premissa: com 400 mil vetores float32 (1.172 MB), `file` marcou 1.172,8
+MB e `anon` quase nada. Os segmentos são mapeados em disco mesmo com
+`on_disk=False`, então a residência dos vetores mora no page cache. Reportar
+`anon` subestimaria a métrica-título em cerca de três vezes.
+
+Residência também não é um número só: ela depende do que já foi consultado. Daí
+os três estados declarados — frio, morno sob HNSW, e exaustivo, que toca todos
+os vetores e define o teto.
 
 O processo do Qdrant vive num cgroup **folha** (`<scope>/container`), não no
 scope. Ler o scope agregaria o que mais estiver pendurado nele.
@@ -19,6 +28,7 @@ import subprocess
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Self
 
 from quantptbr import server
 
@@ -37,13 +47,58 @@ class MemorySnapshot:
     cgroup: str
     taken_at: str
 
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+
+def swap_counters() -> tuple[int, int]:
+    """Páginas que entraram e saíram do swap desde o boot."""
+    stat = _read_stat(Path("/proc/vmstat"))
+    return stat["pswpin"], stat["pswpout"]
+
+
+class SwapWatch:
+    """Anula uma medição feita **enquanto** o host paginou.
+
+    O contrato diz que medição tirada com o host paginando é nula. A versão
+    anterior testava `swap_used > 0 and available < 1024`, e isso erra dos dois
+    lados. Medido nesta máquina em 2026-08-19: 4,2 GB de swap residente com
+    `pswpin`/`pswpout` parados — rastro do passe de embedding, não pressão, e a
+    regra antiga anularia medições perfeitamente válidas se a RAM apertasse. No
+    outro sentido, paginação ativa com RAM de sobra passaria pelo teste de volume
+    sem ser notada, que é o erro caro.
+
+    O sinal correto é a *taxa* na janela da medição, não o volume acumulado.
+    Uma leitura pontual não pode saber disso, por isso a regra vive aqui e não
+    em `MemorySnapshot`.
+    """
+
+    def __enter__(self) -> Self:
+        self._before = swap_counters()
+        self._after = self._before
+        return self
+
+    def __exit__(self, *_) -> None:
+        self._after = swap_counters()
+
+    @property
+    def pages_in(self) -> int:
+        return self._after[0] - self._before[0]
+
+    @property
+    def pages_out(self) -> int:
+        return self._after[1] - self._before[1]
+
     @property
     def is_void(self) -> bool:
-        """Medição tirada sob pressão de swap não vale, e precisa ser detectável depois."""
-        return self.host_swap_used_mb > 0 and self.host_available_mb < 1024
+        return self.pages_in + self.pages_out > 0
 
     def as_dict(self) -> dict:
-        return asdict(self) | {"is_void": self.is_void}
+        return {
+            "swapped_in_pages": self.pages_in,
+            "swapped_out_pages": self.pages_out,
+            "is_void": self.is_void,
+        }
 
 
 def cgroup_path() -> Path:
