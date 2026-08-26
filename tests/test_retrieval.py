@@ -103,3 +103,28 @@ def test_run_round_trips_through_disk(tmp_path, monkeypatch):
     rows = [retrieval.Row("1", "pa", 0.9, 1), retrieval.Row("2", "pb", 0.8, 1)]
     retrieval.save_run(rows, "A0", "exact")
     assert retrieval.load_run("A0", "exact") == rows
+
+
+def test_diagnostic_overrides_are_off_by_default():
+    """Toda tabela reportada usa a matriz; afrouxar é opt-in e rotulado."""
+    default = retrieval.search_params("A1", "hnsw")
+    assert default.hnsw_ef == stats.matrix()["held_constant"]["hnsw"]["ef_search"]
+    assert default.quantization.rescore is True
+
+
+def test_decomposition_overrides_reach_the_search_params():
+    """M4.3 precisa de ef alto e rescoring desligado, ou a medição se apaga."""
+    probe = retrieval.search_params("A1", "hnsw", ef=8192, rescore=False)
+    assert probe.hnsw_ef == 8192
+    assert probe.quantization.rescore is False
+
+
+def test_disabling_rescore_also_drops_oversampling():
+    """Sem rescoring não há o que reordenar; oversampling só ampliaria candidatos."""
+    a5 = retrieval.search_params("A5", "hnsw")
+    assert a5.quantization.oversampling == 4.0
+    assert retrieval.search_params("A5", "hnsw", rescore=False).quantization.oversampling is None
+
+
+def test_float32_arm_has_no_quantization_params_under_any_override():
+    assert retrieval.search_params("A0", "hnsw", ef=8192, rescore=False).quantization is None

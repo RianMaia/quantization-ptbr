@@ -79,26 +79,43 @@ def arm_config(arm_id: str) -> dict:
     raise KeyError(f"braço {arm_id} não está na matriz pré-registrada")
 
 
-def search_params(arm_id: str, mode: str) -> models.SearchParams:
-    """Parâmetros de busca de um braço, derivados da matriz — nunca digitados aqui."""
+def search_params(
+    arm_id: str, mode: str, ef: int | None = None, rescore: bool | None = None
+) -> models.SearchParams:
+    """Parâmetros de busca de um braço, derivados da matriz — nunca digitados aqui.
+
+    `ef` e `rescore` existem só para o diagnóstico de decomposição de M4.3, que
+    precisa afrouxar dois held-constants de propósito e sob rótulo. Toda tabela
+    reportada usa os valores da matriz, que é o que se obtém omitindo os dois.
+    """
     if mode not in stats.matrix()["search_modes"]:
         raise ValueError(f"modo {mode!r} não pré-registrado")
     arm = arm_config(arm_id)
     overrides = arm.get("search_overrides", {})
     quantization = None
     if arm["quantization"] is not None:
+        declared_rescore = overrides.get("rescore", True) if rescore is None else rescore
         quantization = models.QuantizationSearchParams(
-            rescore=overrides.get("rescore", True),
-            oversampling=overrides.get("oversampling"),
+            rescore=declared_rescore,
+            # Sem rescoring não há o que reordenar, e pedir oversampling assim
+            # só ampliaria a lista de candidatos sem mudar o critério.
+            oversampling=overrides.get("oversampling") if declared_rescore else None,
         )
     return models.SearchParams(
         exact=(mode == "exact"),
-        hnsw_ef=stats.matrix()["held_constant"]["hnsw"]["ef_search"],
+        hnsw_ef=stats.matrix()["held_constant"]["hnsw"]["ef_search"] if ef is None else ef,
         quantization=quantization,
     )
 
 
-def retrieve(client, arm_id: str, mode: str, depth: int = DEPTH) -> list[Row]:
+def retrieve(
+    client,
+    arm_id: str,
+    mode: str,
+    depth: int = DEPTH,
+    ef: int | None = None,
+    rescore: bool | None = None,
+) -> list[Row]:
     """Recupera para todas as consultas julgadas, com desempate determinístico."""
     arm = arm_config(arm_id)
     collection = arm["collection"]
@@ -114,7 +131,7 @@ def retrieve(client, arm_id: str, mode: str, depth: int = DEPTH) -> list[Row]:
 
     query_ids, query_vectors = load_queries()
     passage_ids = corpus.load_passage_ids()
-    params = search_params(arm_id, mode)
+    params = search_params(arm_id, mode, ef=ef, rescore=rescore)
 
     rows: list[Row] = []
     for query_id, vector in zip(query_ids, query_vectors, strict=True):
