@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import subprocess
 
 import pytest
 
@@ -84,3 +85,25 @@ def test_manifest_round_trips_to_disk(tmp_path, captured):
         run=captured["run"], controlled=captured["controlled"], host=captured["host"]
     ).save(tmp_path / "m.json")
     assert json.loads(path.read_text(encoding="utf-8"))["controlled"] == captured["controlled"]
+
+
+def test_evidence_written_by_the_run_does_not_count_as_a_dirty_tree(tmp_path, monkeypatch):
+    """Sem isto, toda execução bloqueia a si mesma.
+
+    O run grava em `runs/` — que é versionado de propósito — e só depois pede o
+    manifesto. Contar essa escrita como árvore suja faria o `require_clean_tree`
+    recusar exatamente a execução que acabou de produzir a evidência.
+    """
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    monkeypatch.setattr(manifest.corpus, "REPO_ROOT", tmp_path)
+
+    (tmp_path / "runs").mkdir()
+    (tmp_path / "runs" / "eval_a0_exact.json").write_text("{}", encoding="utf-8")
+    assert not manifest.git_is_dirty(), "evidência recém-escrita não é código sujo"
+    manifest.require_clean_tree()
+
+    (tmp_path / "quantptbr").mkdir()
+    (tmp_path / "quantptbr" / "index.py").write_text("x = 1", encoding="utf-8")
+    assert manifest.git_is_dirty()
+    with pytest.raises(RuntimeError, match="árvore git suja"):
+        manifest.require_clean_tree()

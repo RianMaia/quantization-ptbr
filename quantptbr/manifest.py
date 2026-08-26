@@ -61,7 +61,18 @@ def git_commit() -> str:
     ).stdout.strip()
 
 
+#: Saídas de execução, versionadas de propósito. Sujeira aqui não diz nada sobre
+#: o código que rodou: a própria execução escreve nestes caminhos antes de pedir
+#: o manifesto, e contá-la faria toda execução bloquear a si mesma.
+EVIDENCE_PREFIXES = ("runs/",)
+
+
 def git_is_dirty() -> bool:
+    """A árvore *de código* está suja? Evidência de execução não conta.
+
+    O que a citabilidade exige é que o commit gravado descreva o código
+    executado. Um `runs/A0_hnsw.jsonl` recém-escrito não muda esse código.
+    """
     result = subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=corpus.REPO_ROOT,
@@ -69,7 +80,8 @@ def git_is_dirty() -> bool:
         text=True,
         check=True,
     )
-    return bool(result.stdout.strip())
+    changed = (line[3:].strip('"') for line in result.stdout.splitlines() if line[3:])
+    return any(not path.startswith(EVIDENCE_PREFIXES) for path in changed)
 
 
 def require_clean_tree(allow_dirty: bool = False) -> None:
