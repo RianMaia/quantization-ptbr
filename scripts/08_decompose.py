@@ -71,11 +71,20 @@ def main() -> int:
         print(f"  {arm_id}")
         scores = sweep(client, arm_id)
         plateau = scores[EF_LADDER[-1]]
+
+        # Terceira parcela: o que o rescoring recupera. Sai da diferença entre o
+        # run reportado por M3.1 — que usa o rescoring declarado na matriz — e
+        # este mesmo braço no mesmo `ef`, pontuando só pelos códigos.
+        reported = evaluation.evaluate(retrieval.as_run(retrieval.load_run(arm_id, "hnsw")))
+        reported_value = reported["aggregate"][METRIC]
+
         results[arm_id] = {
             "by_ef": scores,
             "plateau_ndcg10": plateau,
             "quantization_error": plateau - ceiling,
             "graph_error_at_preregistered_ef": scores[EF_LADDER[0]] - plateau,
+            "reported_ndcg10": reported_value,
+            "rescoring_recovery": reported_value - scores[EF_LADDER[0]],
         }
 
     converged = abs(results["A0"]["quantization_error"])
@@ -83,11 +92,26 @@ def main() -> int:
     if converged > 0.005:
         print("  A varredura NÃO chegou ao platô. Nenhuma decomposição abaixo é interpretável.")
 
-    print(f"\n{'braço':6} {'platô':>8} {'erro quantização':>18} {'erro do grafo @128':>20}")
+    # O A4 já declara rescore=False na matriz, então o diagnóstico tem de
+    # reproduzir o run reportado dele exatamente. Se não reproduzir, o override
+    # não está chegando onde deveria e nenhuma linha acima vale.
+    a4 = results["A4"]
+    if abs(a4["rescoring_recovery"]) > 1e-9:
+        raise RuntimeError(
+            f"A4 declara rescore=False mas o diagnóstico difere do run reportado "
+            f"em {a4['rescoring_recovery']:+.6f}: o override não está chegando à busca"
+        )
+    print("controle: A4 (rescore=False na matriz) reproduz o run reportado exatamente")
+
+    print(
+        f"\n{'braço':6} {'platô':>8} {'quantização':>13} {'grafo @128':>12} "
+        f"{'rescoring':>11} {'reportado':>11}"
+    )
     for arm_id, row in results.items():
         print(
-            f"{arm_id:6} {row['plateau_ndcg10']:8.4f} {row['quantization_error']:+18.4f} "
-            f"{row['graph_error_at_preregistered_ef']:+20.4f}"
+            f"{arm_id:6} {row['plateau_ndcg10']:8.4f} {row['quantization_error']:+13.4f} "
+            f"{row['graph_error_at_preregistered_ef']:+12.4f} "
+            f"{row['rescoring_recovery']:+11.4f} {row['reported_ndcg10']:11.4f}"
         )
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
