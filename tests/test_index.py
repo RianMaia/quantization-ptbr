@@ -119,6 +119,12 @@ def test_topology_and_distance_are_held_constant_across_arms():
     assert index.optimizers_config().default_segment_number == held["segments"]
 
 
+def test_indexing_threshold_is_low_enough_that_no_segment_escapes_it():
+    """0 desativaria a indexação por completo — o objetivo é o oposto."""
+    threshold = index.optimizers_config().indexing_threshold
+    assert 0 < threshold < index.BATCH * 3072 / 1024
+
+
 def test_segment_count_is_pinned_instead_of_derived_from_the_machine():
     """Em 0, o Qdrant o deriva das CPUs e a topologia passa a depender do host."""
     assert stats.matrix()["held_constant"]["segments"] > 0

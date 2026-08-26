@@ -105,9 +105,17 @@ def optimizers_config() -> models.OptimizersConfigDiff:
     Deixado em 0, o Qdrant o deriva da contagem de CPUs. A topologia do índice
     passaria a depender do hardware, e com ela a taxa fixa de 32 MB por segmento
     que o armazenamento de payload pré-aloca.
+
+    `indexing_threshold` baixo por uma razão à parte: medido em 2026-08-26, o
+    lote final do upload pode cair num segmento novo pequeno o bastante para
+    ficar abaixo do padrão do Qdrant, e esse segmento nunca ganha HNSW nem é
+    fundido sem mais escrita na coleção — `indexed_vectors_count` congela para
+    sempre. Não é campo controlado da matriz (`require_topology` não o lê); só
+    garante que todo segmento seja indexado, não muda o que o estudo mede.
     """
     return models.OptimizersConfigDiff(
-        default_segment_number=stats.matrix()["held_constant"]["segments"]
+        default_segment_number=stats.matrix()["held_constant"]["segments"],
+        indexing_threshold=1,
     )
 
 
