@@ -96,7 +96,16 @@ def wait_until_ready(timeout: float = 60.0) -> dict:
     raise TimeoutError(f"servidor não respondeu em {timeout}s: {last}")
 
 
-def client(prefer_grpc: bool = True):
+#: Teto por requisição, bem acima do padrão de 5 s do cliente. Este é um
+#: aparelho de medição: uma consulta lenta é um dado, um timeout no meio da
+#: execução é uma execução perdida. Medido em 2026-08-19, a primeira consulta
+#: sobre o A0 frio estourou os 5 s paginando os segmentos, enquanto as
+#: seguintes levaram de 0,02 a 2,7 s. A latência é cronometrada do lado do
+#: cliente, então alargar o teto não interfere no que M3.3 mede.
+TIMEOUT = 600.0
+
+
+def client(prefer_grpc: bool = True, timeout: float = TIMEOUT):
     """Cliente apontado para o servidor fixado, em gRPC por padrão.
 
     O REST rejeita payloads acima de 32 MB, e um lote de 5.000 vetores de 768
@@ -105,7 +114,9 @@ def client(prefer_grpc: bool = True):
     """
     from qdrant_client import QdrantClient
 
-    return QdrantClient(host=HOST, port=HTTP_PORT, grpc_port=GRPC_PORT, prefer_grpc=prefer_grpc)
+    return QdrantClient(
+        host=HOST, port=HTTP_PORT, grpc_port=GRPC_PORT, prefer_grpc=prefer_grpc, timeout=timeout
+    )
 
 
 def require_server(client) -> None:

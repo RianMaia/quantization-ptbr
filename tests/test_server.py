@@ -73,3 +73,13 @@ def test_liveness_check_fails_on_an_unquantized_collection(client):
             server.require_quantization(client, name, "scalar")
     finally:
         client.delete_collection(name)
+
+
+def test_client_timeout_is_wide_enough_for_a_cold_collection():
+    """Consulta lenta é dado; timeout no meio da execução é execução perdida.
+
+    O padrão de 5 s do cliente estourou na primeira consulta sobre o A0 frio,
+    paginando os segmentos do disco. A latência é cronometrada do lado do
+    cliente, então o teto largo não interfere no que M3.3 mede.
+    """
+    assert server.TIMEOUT >= 300, "teto apertado demais para um braço frio de 1M"
