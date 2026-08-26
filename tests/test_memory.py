@@ -7,6 +7,7 @@ reportariam o mesmo número errado.
 
 from __future__ import annotations
 
+import itertools
 import json
 
 import pytest
@@ -173,3 +174,22 @@ def test_residency_is_reported_per_declared_state():
         states = case["states"]
         assert set(states) == {"cold", "warm_hnsw", "exhaustive"}, case["case"]
         assert states["exhaustive"]["total_mb"] >= states["cold"]["total_mb"], case["case"]
+
+
+def test_quiesce_waits_for_the_counters_to_stop_moving(monkeypatch):
+    """A correção é remover a causa da paginação, não afrouxar a regra.
+
+    O build lê 3 GB e o kernel segue recuperando páginas depois. Abrir a janela
+    ali anula a medição pela nossa carga — anulou o A0 duas vezes, com 0,3 MB
+    movidos numa leitura de 558 MB.
+    """
+    counters = itertools.chain([(1, 1), (2, 1), (3, 1)], itertools.repeat((3, 1)))
+    monkeypatch.setattr(memory, "swap_counters", lambda: next(counters))
+
+    assert memory.quiesce(timeout=30, still_for=0.05, poll=0.01)
+
+
+def test_quiesce_gives_up_instead_of_pretending(monkeypatch):
+    counter = itertools.count()
+    monkeypatch.setattr(memory, "swap_counters", lambda: (next(counter), 0))
+    assert not memory.quiesce(timeout=0.1, still_for=1, poll=0.01)

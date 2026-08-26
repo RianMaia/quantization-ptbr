@@ -95,6 +95,11 @@ def measure(client, arm_id: str) -> dict:
     client = server.client()
     server.require_server(client)
 
+    # O build que acabou de rodar deixou o kernel recuperando páginas. Abrir a
+    # janela agora anularia a medição pela nossa própria carga.
+    if not memory.quiesce():
+        print("    host ainda paginando após o prazo; a janela vai nascer suja")
+
     with memory.SwapWatch() as swap:
         states = {"cold": memory.read().as_dict()}
 

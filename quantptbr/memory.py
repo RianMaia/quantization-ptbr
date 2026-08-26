@@ -14,8 +14,15 @@ MB e `anon` quase nada. Os segmentos são mapeados em disco mesmo com
 `anon` subestimaria a métrica-título em cerca de três vezes.
 
 Residência também não é um número só: ela depende do que já foi consultado. Daí
-os três estados declarados — frio, morno sob HNSW, e exaustivo, que toca todos
-os vetores e define o teto.
+os três estados declarados — frio, morno sob HNSW, e exaustivo.
+
+**Emenda de 2026-08-19 (M3.2).** O estado reportado é o **morno**, não o
+exaustivo. A busca exata do Qdrant varre os vetores *originais* e ignora os
+códigos, então o estado exaustivo pagina ~3 GB de originais em todo braço
+comprimido e apaga a compressão sob medição — um caminho que nenhum deploy
+comprimido executa. O `anon` volta a ser reportado com destaque, agora por um
+motivo medido: é ele que rastreia os códigos fixados com `always_ram`, e é
+independente da carga de consultas, enquanto o `file` depende inteiramente dela.
 
 O processo do Qdrant vive num cgroup **folha** (`<scope>/container`), não no
 scope. Ler o scope agregaria o que mais estiver pendurado nele.
@@ -25,6 +32,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -55,6 +63,32 @@ def swap_counters() -> tuple[int, int]:
     """Páginas que entraram e saíram do swap desde o boot."""
     stat = _read_stat(Path("/proc/vmstat"))
     return stat["pswpin"], stat["pswpout"]
+
+
+def quiesce(timeout: float = 180.0, still_for: float = 15.0, poll: float = 1.0) -> bool:
+    """Espera o host parar de paginar antes de abrir a janela de medição.
+
+    O build imediatamente anterior lê 3 GB e escreve 3,6, e o kernel segue
+    trazendo páginas de volta do swap depois que ele termina. Abrir a janela em
+    cima disso anula a medição por causa da **nossa** carga, não do braço: foi o
+    que anulou o A0 duas vezes, com 83 páginas — 0,3 MB numa leitura de 558.
+
+    A correção é remover a causa, não afrouxar a regra. Devolve False se não
+    houver silêncio dentro do prazo, para quem chama decidir em vez de medir
+    sobre ruído.
+    """
+    deadline = time.monotonic() + timeout
+    last = swap_counters()
+    quiet_since = time.monotonic()
+    while time.monotonic() < deadline:
+        time.sleep(poll)
+        current = swap_counters()
+        if current != last:
+            last = current
+            quiet_since = time.monotonic()
+        elif time.monotonic() - quiet_since >= still_for:
+            return True
+    return False
 
 
 class SwapWatch:
