@@ -206,8 +206,20 @@ def upload(
     return total - first
 
 
+#: Maior operação de indexação já observada num build desta matriz foi 94 s
+#: (telemetria do Qdrant, build de A0 em 2026-08-26). Sem progresso por 5x isso
+#: não é uma otimização lenta — é um segmento residual abaixo do
+#: `indexing_threshold` que o otimizador nunca mais vai tocar sozinho.
+STALL_TIMEOUT = 480.0
+
+
 def wait_until_indexed(
-    client, collection: str, expected: int, timeout: float = INDEX_TIMEOUT, poll: float = 5.0
+    client,
+    collection: str,
+    expected: int,
+    timeout: float = INDEX_TIMEOUT,
+    poll: float = 5.0,
+    stall_timeout: float = STALL_TIMEOUT,
 ) -> tuple[float, int]:
     """Espera o otimizador terminar. Verde sozinho não basta.
 
@@ -215,9 +227,19 @@ def wait_until_indexed(
     reporta verde por um instante. Exigir também a contagem de vetores indexados
     fecha essa janela: é a diferença entre afirmar que a indexação terminou e
     supor que terminou.
+
+    **Progresso parado não é o mesmo que build lento.** Medido em 2026-08-26: o
+    lote final de 2.000 pontos caiu num segmento novo, `plain`, com ~6 MB de
+    vetores — abaixo do `indexing_threshold` do otimizador (~10 MB). Um segmento
+    assim nunca ganha HNSW por design do Qdrant, e como nada mais escreve na
+    coleção depois do upload, ele também nunca é fundido a outro. `green` com
+    998.000/1.000.000 fica estável para sempre; sem esta guarda, a espera correu
+    as 4h inteiras do timeout antes de admitir que não ia se resolver.
     """
     started = time.monotonic()
     deadline = started + timeout
+    best = -1
+    progressed_at = started
     while True:
         info = client.get_collection(collection)
         indexed = info.indexed_vectors_count or 0
@@ -225,7 +247,16 @@ def wait_until_indexed(
             raise RuntimeError(f"{collection}: coleção em estado RED")
         if info.status == models.CollectionStatus.GREEN and indexed >= expected:
             return time.monotonic() - started, int(indexed)
-        if time.monotonic() > deadline:
+        now = time.monotonic()
+        if indexed > best:
+            best, progressed_at = indexed, now
+        elif now - progressed_at > stall_timeout:
+            raise TimeoutError(
+                f"{collection}: travado em {indexed:,}/{expected:,} vetores indexados, "
+                f"sem progresso há {stall_timeout / 60:.0f} min — provável segmento residual "
+                "abaixo do indexing_threshold; reconstrua a coleção"
+            )
+        if now > deadline:
             raise TimeoutError(
                 f"{collection}: {info.status} com {indexed:,}/{expected:,} vetores indexados "
                 f"após {timeout / 60:.0f} min"

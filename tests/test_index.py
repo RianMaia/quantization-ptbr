@@ -260,6 +260,17 @@ def test_green_with_an_incomplete_index_is_refused_not_assumed():
         index.wait_until_indexed(client, "c", expected=1000, timeout=0, poll=0)
 
 
+def test_stalled_index_fails_before_the_global_timeout():
+    """Segmento residual travado não deve esperar as 4h inteiras para ser admitido.
+
+    Medido em 2026-08-26: um lote final abaixo do indexing_threshold ficou parado
+    em 998.000/1.000.000 por horas, e nada ia mudar isso sem reconstrução.
+    """
+    client = FakeClient(states=[FakeInfo(models.CollectionStatus.GREEN, 998)])
+    with pytest.raises(TimeoutError, match="travado em 998"):
+        index.wait_until_indexed(client, "c", expected=1000, stall_timeout=0, poll=0)
+
+
 def test_red_collection_aborts_immediately():
     client = FakeClient(states=[FakeInfo(models.CollectionStatus.RED, 0)])
     with pytest.raises(RuntimeError, match="RED"):
