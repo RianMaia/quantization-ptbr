@@ -39,7 +39,13 @@ python scripts/04_embed_queries.py      # S1.6 — as 50 consultas julgadas
 
 python scripts/qdrant_server.py start   # servidor fixado por digest
 python scripts/memory_smoke_test.py     # S1.1 — prova que os contadores respondem
+
+python scripts/05_create_collections.py A0   # M2.1 — braço de referência float32
 ```
+
+O braço é argumento, não código: `05_create_collections.py A1 A2 A3 A4` constrói
+os demais sem editar nada. O A5 não é construível — ele compartilha a coleção do
+A4 e difere apenas em parâmetros de busca.
 
 O passe de 1M é retomável: rodar de novo continua do último bloco completo e
 produz resultado idêntico ao de uma execução ininterrupta.
@@ -62,6 +68,9 @@ uma tabela impecável que não mede nada.
 - **Execuções incomparáveis podem ser somadas.** `manifest.require_same_envelope`
   aborta; nunca avisa e continua.
 - **RSS não é memória residente.** O contrato está em `quantptbr/memory.py`.
+- **O Qdrant indexa de forma assíncrona.** Uma coleção medida durante a
+  construção do grafo não dá nem o custo de build nem o regime estacionário.
+  `index.wait_until_indexed` exige verde **e** a contagem de vetores indexados.
 
 ## Testes
 

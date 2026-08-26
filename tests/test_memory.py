@@ -70,7 +70,21 @@ def test_reading_memory_is_a_single_call(running_server):
     }
 
 
-def test_cgroup_and_podman_stats_agree_within_unit_conversion(running_server):
+@pytest.fixture()
+def fresh_server(running_server):
+    """Container recém-subido, que é o único estado em que o contrato compara os dois.
+
+    Sem isso o teste falhou em 2026-08-19 com 22% de divergência, depois de horas
+    de atividade: com o zswap ativo, `memory.current` conta páginas comprimidas
+    que a conta do `podman stats` desconta. Não é ruído do instrumento — é o
+    instrumento medindo um estado que o contrato não declara. Toda medição real
+    já roda em container novo; o teste agora estabelece a mesma precondição em
+    vez de herdar o estado que a sessão deixou.
+    """
+    server.restart()
+
+
+def test_cgroup_and_podman_stats_agree_within_unit_conversion(fresh_server):
     """Divergência é explicada, nunca reconciliada por média."""
     check = memory.cross_check()
     assert abs(check["difference_mb"]) < 0.05 * check["cgroup_total_mb"]

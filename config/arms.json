@@ -11,7 +11,10 @@
       "ef_search": 128,
       "_comment": "Padrões do Qdrant, adotados sem ajuste. Sintonizar o HNSW por braço trocaria a variável em estudo."
     },
-    "payload": "apenas passage_id, indexado como keyword",
+    "segments": 16,
+    "_segments_because": "Com o campo em 0 o Qdrant deriva o número de segmentos da contagem de CPUs, o que faria a topologia do índice variar conforme a máquina — e com ela a taxa fixa de 32 MB por segmento que o armazenamento de payload pré-aloca em disco. Fixado em 16, o valor que esta máquina escolheria sozinha: nada muda aqui e outra máquina reproduz a mesma topologia.",
+    "payload": "apenas passage_id, armazenado em disco (on_disk_payload=true) e sem índice",
+    "_payload_amendment_2026_08_19": "S1.2 pré-registrou o passage_id 'indexado como keyword'. O índice foi retirado em M2.1 por motivo de medição, não de conveniência: nenhuma consulta do estudo filtra por payload — a recuperação traduz o ID do ponto pela ordem congelada do corpus — e um índice keyword de 1M de valores únicos fica residente em RAM. Ele somaria algumas dezenas de MB iguais a todos os braços, o que é irrelevante para o A0 (2.930 MB previstos) e desloca o A3 e o A4 (92 MB previstos) o suficiente para encolher a razão de compressão que o artigo reporta — por causa de uma estrutura que nenhuma consulta lê. O payload em si permanece: é ele que torna a correspondência ponto↔passagem auditável contra o servidor, e não apenas contra a nossa própria lista.",
     "residency": "uma coleção por vez; as demais são derrubadas antes de qualquer medição"
   },
 
