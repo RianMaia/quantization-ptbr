@@ -9,8 +9,17 @@ ser reconstruído depois que o anterior sai — fazer memória e latência em pa
 separadas custaria cinco reconstruções a mais sem medir nada de novo.
 
 **Estados declarados.** A residência é lida em três: frio logo após o reinício,
-morno após uma carga fixa de consultas HNSW, e exaustivo após busca exata, que
-toca todos os vetores e define o teto. O estado vai junto de todo número.
+morno após uma carga fixa de consultas no caminho de busca **do próprio braço**,
+e exaustivo após busca exata. O estado vai junto de todo número.
+
+**Emenda de 2026-08-19: o estado reportado é `warm_hnsw`, não `exhaustive`.**
+S1.7 elegeu o exaustivo como teto por "tocar todos os vetores". Medido a 1M, ele
+toca os vetores *errados*: o `exact` do Qdrant varre os originais float32 e
+ignora os códigos, então a busca exaustiva pagina ~3 GB de originais em todo
+braço quantizado — A1 saltou de 441 MB de page cache no morno para 3.042 no
+exaustivo. É um caminho que nenhum deploy de braço comprimido executaria, e ele
+apaga precisamente a compressão que o estudo mede. O exaustivo continua gravado,
+como leitura do caminho dos originais, e não como teto.
 
 **A janela de paginação anula a medição.** Não o volume de swap residente — a
 taxa durante a janela. Ver `memory.SwapWatch`.
@@ -20,6 +29,7 @@ from __future__ import annotations
 
 import json
 import statistics
+import sys
 from datetime import UTC, datetime
 
 from quantptbr import corpus, index, manifest, memory, retrieval, server, stats
@@ -35,6 +45,11 @@ WARMUP_REPEATS = 4
 LATENCY_REPEATS = 5
 
 
+def owner_of(arm_id: str) -> str:
+    """Quem constrói a coleção deste braço. O A5 mora na coleção do A4."""
+    return retrieval.arm_config(arm_id).get("_shares_collection_with") or arm_id
+
+
 def sole_collection(client, arm_id: str) -> None:
     """Garante que só a coleção deste braço existe. Verificado, não suposto."""
     wanted = retrieval.arm_config(arm_id)["collection"]
@@ -44,7 +59,7 @@ def sole_collection(client, arm_id: str) -> None:
             client.delete_collection(existing)
     if not client.collection_exists(wanted):
         print(f"    construindo {wanted}")
-        index.build(client, arm_id)
+        index.build(client, owner_of(arm_id))
     remaining = [c.name for c in client.get_collections().collections]
     if remaining != [wanted]:
         raise RuntimeError(f"esperada só {wanted}, servidor tem {remaining}")
@@ -83,6 +98,9 @@ def measure(client, arm_id: str) -> dict:
     with memory.SwapWatch() as swap:
         states = {"cold": memory.read().as_dict()}
 
+        # Aquecimento com os parâmetros do próprio braço: o A5 relê os originais
+        # no rescoring, e é por isso que a residência dele difere da do A4 apesar
+        # de compartilharem a coleção.
         for _ in range(WARMUP_REPEATS):
             retrieval.retrieve(client, arm_id, "hnsw")
         states["warm_hnsw"] = memory.read().as_dict()
@@ -98,8 +116,14 @@ def measure(client, arm_id: str) -> dict:
         "arm": arm_id,
         "collection": retrieval.arm_config(arm_id)["collection"],
         "states": states,
-        "reported_state": "exhaustive",
-        "reported_resident_mb": states["exhaustive"]["total_mb"],
+        "reported_state": "warm_hnsw",
+        "reported_resident_mb": states["warm_hnsw"]["total_mb"],
+        "provisioning_floor_mb": states["warm_hnsw"]["anon_mb"],
+        "_exhaustive_is_not_a_ceiling": (
+            "O exact do Qdrant varre os originais e ignora os códigos, então o "
+            "estado exaustivo mede o caminho dos originais em todo braço, não o "
+            "teto do braço quantizado."
+        ),
         "predicted_resident_mb": retrieval.arm_config(arm_id)["predicted_resident_mb"],
         "latency_ms_per_query": summarise(samples)
         | {
@@ -121,21 +145,20 @@ def main() -> int:
     # O A5 compartilha a coleção do A4: medir memória dele mediria o A4 outra
     # vez. A latência, essa sim, difere — o rescoring lê os originais do disco.
     arms = [a["id"] for a in stats.matrix()["arms"]]
-    buildable = [a for a in arms if not retrieval.arm_config(a).get("_shares_collection_with")]
+    wanted = sys.argv[1:] or arms
+    unknown = [a for a in wanted if a not in arms]
+    if unknown:
+        raise SystemExit(f"braço não pré-registrado: {unknown}")
 
-    results = []
-    for arm_id in buildable:
+    # Execução parcial não apaga medição válida: o arquivo é mesclado por braço.
+    previous = json.loads(OUTPUT.read_text(encoding="utf-8"))["arms"] if OUTPUT.exists() else []
+    results = [row for row in previous if row["arm"] not in wanted]
+
+    for arm_id in wanted:
         print(f"\n{arm_id}")
         client = server.client()
         sole_collection(client, arm_id)
         row = measure(client, arm_id)
-
-        # O A5 anda junto do A4: mesma coleção, mesma residência, só a busca muda.
-        if arm_id == "A4":
-            shared = [a for a in arms if retrieval.arm_config(a).get("_shares_collection_with")]
-            for rider in shared:
-                samples = latency_ms(server.client(), rider, "hnsw", LATENCY_REPEATS)
-                row.setdefault("shares_residency_with", {})[rider] = summarise(samples)
 
         results.append(row)
         state = row["states"]["exhaustive"]
@@ -148,6 +171,7 @@ def main() -> int:
         if row["swap"]["is_void"]:
             print("    MEDIÇÃO NULA: o host paginou durante a janela")
 
+    results.sort(key=lambda row: row["arm"])
     void = [r["arm"] for r in results if r["swap"]["is_void"]]
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(
