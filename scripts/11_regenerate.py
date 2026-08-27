@@ -247,6 +247,107 @@ def geometry_lines(numbers: dict) -> list[str]:
     ]
 
 
+def pareto(numbers: dict, cost_of, key: str, label: str) -> tuple[list[str], list[str]]:
+    """Quem sobrevive quando qualidade e um custo são cobrados juntos.
+
+    Um braço é dominado quando existe outro que não é pior em nenhum dos dois
+    eixos e é melhor em pelo menos um. É a pergunta que se faz antes de escolher
+    uma configuração, e ela tem resposta mecânica em vez de retórica.
+    """
+    quality = numbers["quality"]
+    shared = [arm for arm in quality if cost_of(arm) is not None]
+    if len(shared) < 2:
+        return [], []
+
+    def point(arm: str) -> tuple[float, float]:
+        return quality[arm]["ndcg10"], cost_of(arm)
+
+    frontier, dominated = [], {}
+    for arm in shared:
+        ndcg, cost = point(arm)
+        rivals = [
+            other
+            for other in shared
+            if other != arm
+            and point(other)[0] >= ndcg
+            and point(other)[1] <= cost
+            and point(other) != (ndcg, cost)
+        ]
+        if rivals:
+            dominated[arm] = rivals
+        else:
+            frontier.append(arm)
+
+    numbers.setdefault("pareto", {})[key] = {
+        "objectives": ["maximizar nDCG@10", f"minimizar {label}"],
+        "frontier": frontier,
+        "dominated_by": dominated,
+    }
+
+    rows = [
+        [
+            arm,
+            f"{point(arm)[0]:.4f}",
+            f"{point(arm)[1]:,.1f}",
+            (
+                "dominado por " + ", ".join(dominated[arm])
+                if arm in dominated
+                else "**na fronteira**"
+            ),
+        ]
+        for arm in shared
+    ]
+    return [table(["Braço", "nDCG@10", label, "Situação"], rows)], frontier
+
+
+def pareto_lines(numbers: dict) -> list[str]:
+    """T7 — as duas fronteiras que a recomendação de ponto de operação precisa."""
+    cost, latency = numbers["cost"], numbers["latency"]
+    memory, memory_frontier = pareto(
+        numbers,
+        lambda arm: (cost.get(arm) or {}).get("provisioning_floor_mb"),
+        "quality_vs_memory",
+        "Piso de provisionamento (MB)",
+    )
+    speed, speed_frontier = pareto(
+        numbers,
+        lambda arm: (latency.get(arm) or {}).get("median"),
+        "quality_vs_latency",
+        "Latência mediana (ms)",
+    )
+    if not memory:
+        return []
+
+    lines = ["### Qualidade × memória a provisionar", "", *memory]
+    if len(memory_frontier) == 1:
+        lines += [
+            "",
+            f"> **A fronteira tem um ponto só: {memory_frontier[0]}.** Nenhuma",
+            "> configuração comprimida é Pareto-ótima neste par de eixos — a linha de",
+            "> base tem ao mesmo tempo a melhor qualidade e o menor piso.",
+        ]
+    if speed:
+        lines += ["", "### Qualidade × latência", "", *speed]
+        if len(speed_frontier) > 1:
+            lines += [
+                "",
+                (
+                    f"> Aqui a compressão paga: a fronteira tem {len(speed_frontier)} "
+                    f"pontos ({', '.join(speed_frontier)})."
+                ),
+                "> É o eixo em que trocar qualidade por velocidade tem sentido.",
+            ]
+    lines += [
+        "",
+        "> **A recomendação é condicional, e o texto não deve simplificá-la.** Se a",
+        "> restrição é memória a provisionar, não comprima: nesta configuração a",
+        "> compressão custa RAM não-evictável em vez de economizá-la. Se a restrição é",
+        "> latência, a compressão compra tempo, e aí o par binário + rescoring é o que",
+        "> recupera qualidade sem devolver a velocidade toda.",
+    ]
+    return lines
+
+
 def calibration_lines(numbers: dict) -> list[str]:
     """T6 — a validação do aparelho, que é o que autoriza todo o resto.
 
@@ -428,6 +529,19 @@ def main() -> int:
     geometry = geometry_lines(numbers)
     if geometry:
         sections += ["", "## T5 — Geometria dos vetores e o teto do braço binário", "", *geometry]
+
+    pareto = pareto_lines(numbers)
+    if pareto:
+        sections += [
+            "",
+            "## T7 — Fronteiras de Pareto e o ponto de operação",
+            "",
+            "Um braço é **dominado** quando existe outro que não é pior em nenhum dos dois",
+            "eixos e é melhor em pelo menos um. É a pergunta que se faz antes de escolher",
+            "uma configuração, e tem resposta mecânica.",
+            "",
+            *pareto,
+        ]
 
     calibration = calibration_lines(numbers)
     if calibration:

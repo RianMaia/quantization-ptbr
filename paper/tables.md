@@ -83,6 +83,47 @@ documentação e os posts de prática citam; as outras duas são as medidas.
 - Dimensões degeneradas em sinal (limiar 0.95, declarado antes de calcular): **323 de 768**.
 - Orçamento efetivo do código binário: **324.7 bits de 768** (42.3%).
 
+## T7 — Fronteiras de Pareto e o ponto de operação
+
+Um braço é **dominado** quando existe outro que não é pior em nenhum dos dois
+eixos e é melhor em pelo menos um. É a pergunta que se faz antes de escolher
+uma configuração, e tem resposta mecânica.
+
+### Qualidade × memória a provisionar
+
+| Braço | nDCG@10 | Piso de provisionamento (MB) | Situação |
+|---|---|---|---|
+| A0 | 0.4655 | 410.6 | **na fronteira** |
+| A1 | 0.4604 | 1,276.1 | dominado por A0 |
+| A2 | 0.4411 | 632.8 | dominado por A0 |
+| A3 | 0.3928 | 537.6 | dominado por A0 |
+| A4 | 0.0773 | 554.1 | dominado por A0, A3 |
+| A5 | 0.3770 | 561.4 | dominado por A0, A3 |
+
+> **A fronteira tem um ponto só: A0.** Nenhuma
+> configuração comprimida é Pareto-ótima neste par de eixos — a linha de
+> base tem ao mesmo tempo a melhor qualidade e o menor piso.
+
+### Qualidade × latência
+
+| Braço | nDCG@10 | Latência mediana (ms) | Situação |
+|---|---|---|---|
+| A0 | 0.4655 | 16.6 | **na fronteira** |
+| A1 | 0.4604 | 10.6 | **na fronteira** |
+| A2 | 0.4411 | 66.3 | dominado por A0, A1 |
+| A3 | 0.3928 | 11.5 | dominado por A1 |
+| A4 | 0.0773 | 4.5 | **na fronteira** |
+| A5 | 0.3770 | 8.1 | **na fronteira** |
+
+> Aqui a compressão paga: a fronteira tem 4 pontos (A0, A1, A4, A5).
+> É o eixo em que trocar qualidade por velocidade tem sentido.
+
+> **A recomendação é condicional, e o texto não deve simplificá-la.** Se a
+> restrição é memória a provisionar, não comprima: nesta configuração a
+> compressão custa RAM não-evictável em vez de economizá-la. Se a restrição é
+> latência, a compressão compra tempo, e aí o par binário + rescoring é o que
+> recupera qualidade sem devolver a velocidade toda.
+
 ## T6 — Validação do aparelho
 
 Reproduz o protocolo dos autores do Quati — run sobre o corpus de 1M pontuado
@@ -102,4 +143,4 @@ E5-base publicado sobre este benchmark. É o que autoriza ler as outras tabelas.
 - HNSW m=16, ef_construct=100, ef_search=128, Cosine
 - Consultas julgadas: 50 (pontuáveis: 49)
 - Kernel `7.0.11-200.nobara.fc43.x86_64`, Python 3.14.4
-- Regenerado em 2026-08-27T14:24:36.057998+00:00 no commit `58eb1e4facad`
+- Regenerado em 2026-08-27T14:27:40.006328+00:00 no commit `683ad9bedca0`

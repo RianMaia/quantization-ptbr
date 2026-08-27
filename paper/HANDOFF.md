@@ -149,6 +149,16 @@ vem da busca aproximada, varrendo `ef` até o platô. O achado que vale destacar
 o HNSW sobre float32 custa apenas −0,0014, então a degradação medida é da
 quantização, não do grafo.
 
+**A fronteira de Pareto (T7) dá o resultado mais direto do artigo.** No par
+qualidade × memória a provisionar, **a fronteira tem um ponto só: o A0**. Toda
+configuração comprimida é dominada — existe uma alternativa que é melhor nos
+dois eixos ao mesmo tempo. No par qualidade × latência a história muda: a
+fronteira tem quatro pontos (A0, A1, A4, A5), e é aí que comprimir faz sentido.
+
+**A recomendação de ponto de operação é condicional, e simplificá-la seria
+desonesto:** se a restrição é memória a provisionar, não comprima; se é
+latência, comprima e use rescoring para recuperar qualidade.
+
 **A geometria (T5) explica o colapso binário em vez de apenas relatá-lo.** O
 espaço parece centrado no agregado (média das médias por dimensão −0,00018),
 mas dimensão a dimensão o deslocamento é de 1,614 desvios: 323 das 768
@@ -220,9 +230,6 @@ Honestidade sobre o estado da entrega:
 
 - **RAF-69** — varredura de oversampling para o A5. O A5 usa um único ponto de
   operação; a curva completa não foi levantada.
-- **RAF-72** — fronteira de Pareto qualidade × memória e recomendação de ponto
-  de operação. Os dados existem em `numbers.json`; falta a figura e o texto da
-  recomendação.
 - **RAF-64** — referência BM25 própria. A calibração passou sem ela, usando o
   BM25 publicado pelos autores do Quati como piso de faixa.
 - **RAF-81** — revisão adversarial interna contra as limitações declaradas.

@@ -264,6 +264,57 @@
     "degenerate_dimensions": 323,
     "effective_bits": 324.69346989078764
   },
+  "pareto": {
+    "quality_vs_memory": {
+      "objectives": [
+        "maximizar nDCG@10",
+        "minimizar Piso de provisionamento (MB)"
+      ],
+      "frontier": [
+        "A0"
+      ],
+      "dominated_by": {
+        "A1": [
+          "A0"
+        ],
+        "A2": [
+          "A0"
+        ],
+        "A3": [
+          "A0"
+        ],
+        "A4": [
+          "A0",
+          "A3"
+        ],
+        "A5": [
+          "A0",
+          "A3"
+        ]
+      }
+    },
+    "quality_vs_latency": {
+      "objectives": [
+        "maximizar nDCG@10",
+        "minimizar Latência mediana (ms)"
+      ],
+      "frontier": [
+        "A0",
+        "A1",
+        "A4",
+        "A5"
+      ],
+      "dominated_by": {
+        "A2": [
+          "A0",
+          "A1"
+        ],
+        "A3": [
+          "A1"
+        ]
+      }
+    }
+  },
   "calibration": {
     "protocol": "run de recuperação sobre o corpus de 1M, pontuado contra os qrels de 10M",
     "published": 0.3955,
@@ -334,6 +385,6 @@
       }
     }
   },
-  "regenerated_at": "2026-08-27T14:24:36.057998+00:00",
-  "git_commit": "58eb1e4facad9d5c9cb7893768e3646c54062c1c"
+  "regenerated_at": "2026-08-27T14:27:40.006328+00:00",
+  "git_commit": "683ad9bedca0d076ee230c5ed0d10cb6c38d344a"
 }
