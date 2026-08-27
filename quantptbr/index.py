@@ -111,27 +111,6 @@ def optimizers_config() -> models.OptimizersConfigDiff:
     )
 
 
-def sweep_residual_segments(client, collection: str) -> None:
-    """Baixa o `indexing_threshold` **depois** que a escrita terminou.
-
-    O lote final do upload pode cair num segmento novo pequeno demais para o
-    limiar padrão do Qdrant (~10 MB). Esse segmento nunca ganha HNSW nem é
-    fundido sem mais escrita, e `indexed_vectors_count` congela abaixo do total
-    para sempre — travou o A0 uma vez e o A4 duas em 2026-08-26.
-
-    **O limiar tem de descer só no fim, nunca na criação.** Aplicado desde a
-    criação, cada segmento nasce elegível a indexação enquanto os pontos ainda
-    entram, e o otimizador reescreve segmento sobre segmento durante o upload
-    inteiro: o A4 foi de 3,7 GB para 43,3 GB em disco, e o container passou a
-    demorar mais de um minuto para subir. Aqui a coleção já está parada, então
-    o otimizador faz uma passada só sobre o que sobrou.
-    """
-    client.update_collection(
-        collection_name=collection,
-        optimizers_config=models.OptimizersConfigDiff(indexing_threshold=1),
-    )
-
-
 def require_topology(client, collection: str) -> None:
     """Relê do servidor o que a matriz manda manter constante.
 
@@ -229,9 +208,15 @@ def upload(
 
 #: Maior operação de indexação já observada num build desta matriz foi 94 s
 #: (telemetria do Qdrant, build de A0 em 2026-08-26). Sem progresso por 5x isso
-#: não é uma otimização lenta — é um segmento residual abaixo do
-#: `indexing_threshold` que o otimizador nunca mais vai tocar sozinho.
+#: não é uma otimização lenta — é o segmento residual, e ele não vai se mover.
 STALL_TIMEOUT = 480.0
+
+#: Pontos que podem ficar fora do HNSW sem que o build seja recusado. O lote
+#: final do upload pode cair sozinho num segmento abaixo do `indexing_threshold`
+#: do Qdrant; esse segmento é resolvido por varredura exata, com resultado
+#: correto, e um lote em 1M é 0,2% dos pontos. Acima disso não é resíduo, é
+#: build incompleto.
+RESIDUAL_TOLERANCE = BATCH
 
 
 def wait_until_indexed(
@@ -241,6 +226,7 @@ def wait_until_indexed(
     timeout: float = INDEX_TIMEOUT,
     poll: float = 5.0,
     stall_timeout: float = STALL_TIMEOUT,
+    tolerance: int = RESIDUAL_TOLERANCE,
 ) -> tuple[float, int]:
     """Espera o otimizador terminar. Verde sozinho não basta.
 
@@ -249,13 +235,21 @@ def wait_until_indexed(
     fecha essa janela: é a diferença entre afirmar que a indexação terminou e
     supor que terminou.
 
-    **Progresso parado não é o mesmo que build lento.** Medido em 2026-08-26: o
-    lote final de 2.000 pontos caiu num segmento novo, `plain`, com ~6 MB de
-    vetores — abaixo do `indexing_threshold` do otimizador (~10 MB). Um segmento
-    assim nunca ganha HNSW por design do Qdrant, e como nada mais escreve na
-    coleção depois do upload, ele também nunca é fundido a outro. `green` com
-    998.000/1.000.000 fica estável para sempre; sem esta guarda, a espera correu
-    as 4h inteiras do timeout antes de admitir que não ia se resolver.
+    **O segmento residual é aceito, não forçado.** Medido em 2026-08-26: o lote
+    final pode cair num segmento `plain` abaixo do `indexing_threshold` (~10 MB),
+    que por design do Qdrant nunca ganha HNSW e, sem mais escrita na coleção,
+    nunca é fundido — `green` com 998.000/1.000.000 fica estável para sempre.
+    Duas tentativas de forçar a indexação baixando o limiar terminaram pior que
+    o problema: na criação, o otimizador reescreveu segmento sobre segmento
+    durante o upload e o A4 foi a 43,3 GB em disco; depois do upload, entrou em
+    re-otimização que não converge — 260 segmentos no lugar de 16, pontos
+    duplicados, 30,4 GB, e `indexed_vectors_count` em 3.052.848 para 1M de
+    pontos. Aceitar o resíduo declarado é mais barato e mais honesto: esses
+    pontos são buscados por varredura exata, com resultado correto.
+
+    A contagem devolvida é limitada a `expected`: o Qdrant soma segmentos
+    sobrepostos durante uma re-otimização, e `indexed >= expected` chegou a dar
+    build por concluído em cima de exatamente o estado patológico acima.
     """
     started = time.monotonic()
     deadline = started + timeout
@@ -263,19 +257,27 @@ def wait_until_indexed(
     progressed_at = started
     while True:
         info = client.get_collection(collection)
-        indexed = info.indexed_vectors_count or 0
+        indexed = min(info.indexed_vectors_count or 0, expected)
         if info.status == models.CollectionStatus.RED:
             raise RuntimeError(f"{collection}: coleção em estado RED")
-        if info.status == models.CollectionStatus.GREEN and indexed >= expected:
+        green = info.status == models.CollectionStatus.GREEN
+        if green and indexed >= expected:
             return time.monotonic() - started, int(indexed)
         now = time.monotonic()
         if indexed > best:
             best, progressed_at = indexed, now
         elif now - progressed_at > stall_timeout:
+            missing = expected - indexed
+            if green and missing <= tolerance:
+                print(
+                    f"    {missing:,} pontos em segmento residual, fora do HNSW e "
+                    "buscados por varredura exata"
+                )
+                return time.monotonic() - started, int(indexed)
             raise TimeoutError(
                 f"{collection}: travado em {indexed:,}/{expected:,} vetores indexados, "
-                f"sem progresso há {stall_timeout / 60:.0f} min — provável segmento residual "
-                "abaixo do indexing_threshold; reconstrua a coleção"
+                f"sem progresso há {stall_timeout / 60:.0f} min e {missing:,} pontos fora do "
+                f"índice — acima da tolerância de {tolerance:,}; reconstrua a coleção"
             )
         if now > deadline:
             raise TimeoutError(
@@ -397,7 +399,6 @@ def build(client, arm_id: str, recreate: bool = False, resume: bool = False, arr
     upload_seconds = time.perf_counter() - started
 
     print(f"{arm_id}: aguardando o otimizador …")
-    sweep_residual_segments(client, collection)
     index_seconds, indexed = wait_until_indexed(client, collection, len(passage_ids))
 
     # Config lida de volta do servidor: uma coleção cuja quantização não pegou
@@ -419,6 +420,9 @@ def build(client, arm_id: str, recreate: bool = False, resume: bool = False, arr
         "upload_seconds": round(upload_seconds, 1),
         "index_seconds": round(index_seconds, 1),
         "indexed_vectors_count": indexed,
+        # Pontos fora do HNSW, num segmento abaixo do indexing_threshold. São
+        # buscados por varredura exata; a tabela final tem de poder dizer isso.
+        "unindexed_points": len(passage_ids) - indexed,
         "footprint": disk,
         "spot_check": spot_check,
     }

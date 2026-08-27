@@ -119,30 +119,15 @@ def test_topology_and_distance_are_held_constant_across_arms():
     assert index.optimizers_config().default_segment_number == held["segments"]
 
 
-def test_creation_does_not_lower_the_indexing_threshold():
-    """O limiar baixo na criação inflou o A4 de 3,7 GB para 43,3 GB em disco.
+def test_the_indexing_threshold_is_left_alone():
+    """Baixar o limiar saiu pior que o resíduo que ele resolvia.
 
-    Cada segmento nascia elegível a indexação enquanto os pontos ainda entravam,
-    e o otimizador reescrevia segmento sobre segmento durante o upload inteiro.
+    Na criação, o otimizador reescreveu segmento sobre segmento durante o upload
+    e o A4 foi a 43,3 GB em disco. Depois do upload, entrou em re-otimização que
+    não converge: 260 segmentos no lugar de 16 e 30,4 GB.
     """
     assert index.optimizers_config().indexing_threshold is None
-
-
-def test_residual_sweep_lowers_the_threshold_after_the_upload():
-    """E o limiar tem de descer o bastante para alcançar o segmento residual."""
-
-    class Recorder:
-        def __init__(self):
-            self.calls = []
-
-        def update_collection(self, collection_name, optimizers_config):
-            self.calls.append((collection_name, optimizers_config))
-
-    recorder = Recorder()
-    index.sweep_residual_segments(recorder, "c")
-    (collection, config), = recorder.calls
-    assert collection == "c"
-    assert 0 < config.indexing_threshold < index.BATCH * 3072 / 1024
+    assert not hasattr(index, "sweep_residual_segments")
 
 
 def test_segment_count_is_pinned_instead_of_derived_from_the_machine():
@@ -286,15 +271,30 @@ def test_green_with_an_incomplete_index_is_refused_not_assumed():
         index.wait_until_indexed(client, "c", expected=1000, timeout=0, poll=0)
 
 
-def test_stalled_index_fails_before_the_global_timeout():
-    """Segmento residual travado não deve esperar as 4h inteiras para ser admitido.
+def test_a_residual_segment_within_tolerance_is_accepted_not_forced():
+    """0,2% dos pontos fora do HNSW são buscados por varredura exata, e isso basta."""
+    client = FakeClient(states=[FakeInfo(models.CollectionStatus.GREEN, 998_000)])
+    _, indexed = index.wait_until_indexed(
+        client, "c", expected=1_000_000, stall_timeout=0, poll=0
+    )
+    assert indexed == 998_000
 
-    Medido em 2026-08-26: um lote final abaixo do indexing_threshold ficou parado
-    em 998.000/1.000.000 por horas, e nada ia mudar isso sem reconstrução.
+
+def test_a_shortfall_beyond_tolerance_is_still_a_failed_build():
+    client = FakeClient(states=[FakeInfo(models.CollectionStatus.GREEN, 900_000)])
+    with pytest.raises(TimeoutError, match="acima da tolerância"):
+        index.wait_until_indexed(client, "c", expected=1_000_000, stall_timeout=0, poll=0)
+
+
+def test_overlapping_segments_cannot_report_the_build_as_finished():
+    """O A4 chegou a 3.052.848 indexados para 1M de pontos em re-otimização.
+
+    Somando segmentos sobrepostos, `indexed >= expected` deu por concluído um
+    build com 260 segmentos e 30,4 GB em disco.
     """
-    client = FakeClient(states=[FakeInfo(models.CollectionStatus.GREEN, 998)])
-    with pytest.raises(TimeoutError, match="travado em 998"):
-        index.wait_until_indexed(client, "c", expected=1000, stall_timeout=0, poll=0)
+    client = FakeClient(states=[FakeInfo(models.CollectionStatus.GREY, 3_052_848)])
+    with pytest.raises(TimeoutError):
+        index.wait_until_indexed(client, "c", expected=1_000_000, stall_timeout=0, poll=0)
 
 
 def test_red_collection_aborts_immediately():
