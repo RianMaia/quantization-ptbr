@@ -246,6 +246,46 @@ def geometry_lines(numbers: dict) -> list[str]:
     ]
 
 
+def calibration_lines(numbers: dict) -> list[str]:
+    """T6 — a validação do aparelho, que é o que autoriza todo o resto.
+
+    Sem ela o estudo compara seis braços entre si e não sabe se algum deles está
+    perto do que a literatura obteve. Reproduz o protocolo dos autores do Quati:
+    run de 1M pontuado contra os qrels de 10M.
+    """
+    path = RUNS / "retrieval" / "A0_exact.jsonl"
+    if not path.exists():
+        return []
+    from collections import defaultdict
+
+    from quantptbr import evaluation
+
+    run: dict[str, dict[str, float]] = defaultdict(dict)
+    for line in path.read_text(encoding="utf-8").splitlines():
+        hit = json.loads(line)
+        run[hit["query_id"]][hit["passage_id"]] = hit["score"]
+    report = evaluation.calibration_report(dict(run))
+    numbers["calibration"] = report
+    band = report["range_check"]
+    return [
+        (
+            f"- Alvo publicado (Bueno et al., Quati, Tabela 6, E5-base): "
+            f"**{report['published']:.4f}**"
+        ),
+        (
+            f"- Medido aqui, mesmo protocolo: **{report['preregistered_over_49']:.4f}** "
+            f"(Δ {report['delta_49']:+.4f})"
+        ),
+        f"- Veredito: **{report['verdict']}**",
+        (
+            f"- Checagem de faixa: {band['floor']['system']} {band['floor']['ndcg10']:.4f} "
+            f"< A0 {report['study_qrels_ndcg10']:.4f} "
+            f"< {band['nearest_above']['system']} {band['nearest_above']['ndcg10']:.4f} "
+            f"— dentro: **{band['inside']}**"
+        ),
+    ]
+
+
 def provenance(numbers: dict) -> list[str]:
     """O bloco que torna a tabela auditável em vez de apenas legível."""
     reference = load("eval_a0_hnsw.json")
@@ -377,6 +417,19 @@ def main() -> int:
     geometry = geometry_lines(numbers)
     if geometry:
         sections += ["", "## T5 — Geometria dos vetores e o teto do braço binário", "", *geometry]
+
+    calibration = calibration_lines(numbers)
+    if calibration:
+        sections += [
+            "",
+            "## T6 — Validação do aparelho",
+            "",
+            "Reproduz o protocolo dos autores do Quati — run sobre o corpus de 1M pontuado",
+            "contra os qrels de 10M — para confrontar a linha de base com o único número de",
+            "E5-base publicado sobre este benchmark. É o que autoriza ler as outras tabelas.",
+            "",
+            *calibration,
+        ]
 
     sections += ["", "## Procedência", "", *provenance(numbers)]
 
