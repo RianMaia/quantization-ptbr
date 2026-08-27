@@ -120,12 +120,13 @@ def cost_rows(numbers: dict) -> tuple[list[list[str]], list[str]]:
         state = row["states"][REPORTED_STATE]
         disk = row["footprint"]["total_mb"]
         floor = state["anon_mb"]
-        storage = f"{baseline['footprint']['total_mb'] / disk:.2f}x" if baseline else MISSING
-        residency = (
-            f"{baseline['states'][REPORTED_STATE]['anon_mb'] / floor:.2f}x"
-            if baseline and floor
-            else MISSING
-        )
+        # Razões na direção que se lê sem inverter: acima de 1,00x significa
+        # gastar MAIS que o float32. A forma invertida convida exatamente o erro
+        # de leitura que o artigo existe para desfazer — 0,32x parece "comprimiu
+        # para 32%" quando o fato é "precisa de 3,1x mais RAM".
+        storage = f"{disk / baseline['footprint']['total_mb']:.2f}x" if baseline else MISSING
+        base_floor = baseline["states"][REPORTED_STATE]["anon_mb"] if baseline else 0
+        residency = f"{floor / base_floor:.2f}x" if base_floor else MISSING
         rows.append(
             [
                 arm["id"],
@@ -362,10 +363,15 @@ def main() -> int:
         "",
         "## T2 — Compressão: armazenamento contra residência",
         "",
-        "A distinção central do artigo. O Qdrant guarda os vetores float32 originais ao",
-        "lado dos códigos quantizados, então comprimir **reduz a memória a provisionar e",
-        "aumenta os bytes a armazenar**. A razão nominal é a que a documentação e os posts",
-        "de prática citam; as outras duas são as medidas.",
+        "A distinção central do artigo, e o ponto em que o medido contraria o esperado.",
+        "",
+        "O Qdrant guarda os vetores float32 originais ao lado dos códigos quantizados, de",
+        "modo que comprimir **aumenta os bytes a armazenar** — isso era esperado. O que",
+        "não era: comprimir **também aumenta a memória a provisionar**. Com",
+        "`always_ram: true`, os códigos vão para memória anônima enquanto os originais",
+        "seguem mapeados em disco; a linha de base float32 mantém tudo como page cache",
+        "evictável, e por isso tem o menor piso de todos. A razão nominal é a que a",
+        "documentação e os posts de prática citam; as outras duas são as medidas.",
         "",
         table(
             [
@@ -373,16 +379,21 @@ def main() -> int:
                 "Configuração",
                 "Compressão nominal",
                 "Disco (MB)",
-                "Razão de armazenamento",
+                "Disco vs A0",
                 "Piso de provisionamento (MB)",
-                "Razão de residência",
+                "Piso vs A0",
             ],
             cost,
         ),
         "",
+        "> **Ler as duas últimas colunas na direção certa: acima de `1.00x` é gastar",
+        "> MAIS que o float32, não menos.** Nenhum braço comprimido reduz o piso de",
+        "> provisionamento — todos o aumentam. Em disco, só a quantização binária fica",
+        "> abaixo da linha de base, e por 5%, longe dos 32x nominais.",
+        ">",
         "> Piso de provisionamento = memória anônima do cgroup do container no estado",
-        f"> `{REPORTED_STATE}`: é o que precisa existir na máquina. O page cache dos originais",
-        "> é evictável e aparece em `numbers.json` como `page_cache_mb`.",
+        f"> `{REPORTED_STATE}`: é o que precisa existir na máquina. O page cache dos",
+        "> originais é evictável e aparece em `numbers.json` como `page_cache_mb`.",
     ]
     if cost_notes:
         sections += ["", *[f"> {note}" for note in cost_notes]]

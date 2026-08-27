@@ -80,14 +80,35 @@ primeiro. A calibração reproduz o protocolo deles; o estudo usa o dele.
 
 ## 4. A contribuição conceitual central
 
-> **Comprimir um índice vetorial reduz a memória que é preciso provisionar e
-> aumenta os bytes que é preciso armazenar.**
+> **Nesta configuração, comprimir um índice vetorial não reduziu nem os bytes
+> armazenados nem a memória a provisionar. Aumentou as duas coisas.**
 
-O Qdrant mantém os vetores float32 originais ao lado dos códigos quantizados.
+⚠️ **Isto contraria o que o próprio estudo pré-registrou.** A expectativa era a
+formulação usual: compressão reduz residência e aumenta armazenamento, porque o
+Qdrant mantém os vetores float32 originais ao lado dos códigos quantizados. A
+primeira metade se confirmou. A segunda não.
+
+**O mecanismo, que é o que torna o achado transferível.** Com
+`always_ram: true`, os códigos quantizados vão para memória **anônima** — que
+não pode ser despejada e precisa existir na máquina. Os originais float32
+continuam mapeados em disco, como page cache **evictável**. A linha de base
+float32 não tem códigos, então mantém tudo como page cache e acaba com o
+**menor piso de provisionamento de todos os seis braços** (410,6 MB). Cada
+braço comprimido soma um custo anônimo em cima de um custo mapeado que não
+desapareceu.
+
 Os números de 4x e 32x citados na documentação e em posts de prática descrevem
-**residência**, e são rotineiramente lidos como se descrevessem
-**armazenamento**. A tabela T2 traz as duas razões lado a lado com a nominal,
-justamente para tornar o contraste visível.
+o tamanho do *código*, não o de nada que se possa provisionar ou faturar. A
+tabela T2 põe as três razões lado a lado — nominal, disco e piso — para tornar
+a distância visível: o A1 promete 4x e custa **3,11x mais** RAM não-evictável
+que não comprimir nada.
+
+**Como escrever isto sem exagerar.** É um resultado sobre *esta* configuração:
+um motor (Qdrant 1.19), com `always_ram: true`, com os originais retidos.
+Não é uma afirmação sobre quantização em geral, e um motor que descartasse os
+originais teria outro perfil. O que é geral é a distinção — residência,
+armazenamento e tamanho de código são três grandezas diferentes, e a prática
+corrente cita uma como se fosse as três.
 
 Isto custa quase nada em espaço de página e é o que um leitor leva embora mesmo
 que esqueça todo o resto. Não é uma ressalva para a seção de limitações — é

@@ -4,7 +4,7 @@
     "RAF-68",
     "RAF-70"
   ],
-  "finished_at": "2026-08-26T02:41:34.948251+00:00",
+  "finished_at": "2026-08-27T14:23:34.763852+00:00",
   "warmup_repeats": 4,
   "latency_repeats": 5,
   "void_measurements": [],
@@ -14,65 +14,96 @@
       "collection": "quati_a0_float32",
       "states": {
         "cold": {
-          "anon_mb": 394.3,
-          "file_mb": 35.1,
-          "total_mb": 465.5,
-          "host_available_mb": 16565.1,
-          "host_swap_used_mb": 2970.5,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0322dfad6b7d2f3a9221bffd448c0a161eb034fe068ad348777135d2faf6e906.scope/container",
-          "taken_at": "2026-08-26T02:30:06.744833+00:00"
+          "anon_mb": 354.4,
+          "file_mb": 30.9,
+          "total_mb": 429.6,
+          "host_available_mb": 17583.1,
+          "host_swap_used_mb": 3709.3,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-81ba9f8aa0b0a7321c1a56230be3a4c3ffa8979d686fd69bfb57e88ed3b5dec4.scope/container",
+          "taken_at": "2026-08-27T02:38:13.575608+00:00"
         },
         "warm_hnsw": {
-          "anon_mb": 408.9,
-          "file_mb": 109.9,
-          "total_mb": 599.6,
-          "host_available_mb": 16486.3,
-          "host_swap_used_mb": 2970.5,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0322dfad6b7d2f3a9221bffd448c0a161eb034fe068ad348777135d2faf6e906.scope/container",
-          "taken_at": "2026-08-26T02:30:26.807326+00:00"
+          "anon_mb": 410.6,
+          "file_mb": 108.7,
+          "total_mb": 596.3,
+          "host_available_mb": 17382.1,
+          "host_swap_used_mb": 3701.8,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-81ba9f8aa0b0a7321c1a56230be3a4c3ffa8979d686fd69bfb57e88ed3b5dec4.scope/container",
+          "taken_at": "2026-08-27T02:38:30.705969+00:00"
         },
         "exhaustive": {
-          "anon_mb": 380.3,
-          "file_mb": 111.3,
-          "total_mb": 608.4,
-          "host_available_mb": 16525.4,
-          "host_swap_used_mb": 2970.5,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0322dfad6b7d2f3a9221bffd448c0a161eb034fe068ad348777135d2faf6e906.scope/container",
-          "taken_at": "2026-08-26T02:31:02.316185+00:00"
+          "anon_mb": 367.6,
+          "file_mb": 110.2,
+          "total_mb": 598.1,
+          "host_available_mb": 17490.9,
+          "host_swap_used_mb": 3725.3,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-81ba9f8aa0b0a7321c1a56230be3a4c3ffa8979d686fd69bfb57e88ed3b5dec4.scope/container",
+          "taken_at": "2026-08-27T02:39:05.746210+00:00"
         }
       },
       "reported_state": "warm_hnsw",
-      "reported_resident_mb": 599.6,
-      "provisioning_floor_mb": 408.9,
+      "reported_resident_mb": 596.3,
+      "provisioning_floor_mb": 410.6,
       "_exhaustive_is_not_a_ceiling": "O exact do Qdrant varre os originais e ignora os códigos, então o estado exaustivo mede o caminho dos originais em todo braço, não o teto do braço quantizado.",
       "predicted_resident_mb": 2930,
       "latency_ms_per_query": {
-        "median": 15.93,
-        "p95": 18.0,
-        "min": 12.55,
-        "max": 38.49,
+        "median": 16.65,
+        "p95": 19.14,
+        "min": 13.48,
+        "max": 35.13,
         "samples": 250,
         "passes": 5,
         "queries_per_pass": 50,
         "concurrency": 1,
         "residency_state": "warm_hnsw"
       },
-      "rss_mb": 6956.5,
+      "rss_mb": 6723.0,
       "swap": {
-        "swapped_in_pages": 0,
-        "swapped_out_pages": 0,
-        "is_void": false
+        "container_swap_peak_bytes": 0,
+        "container_zswapped_out_pages": 0,
+        "is_void": false,
+        "_host_counters_are_context_only": {
+          "pswpin": 43361,
+          "pswpout": 544889
+        }
       },
       "footprint": {
-        "total_bytes": 4408062515,
-        "total_mb": 4203.9,
+        "total_bytes": 4119089878,
+        "total_mb": 3928.3,
         "by_component_mb": {
-          "vector_storage": 3369.4,
-          "vector_index": 47.6,
-          "payload_storage": 667.6,
+          "vector_storage": 3161.7,
+          "vector_index": 45.5,
+          "payload_storage": 603.6,
           "payload_index": 0.0,
           "wal": 96.0,
-          "outros": 23.2
+          "outros": 21.6
+        }
+      },
+      "build": {
+        "arm": "A0",
+        "collection": "quati_a0_float32",
+        "points": 1000000,
+        "resumed_from": 0,
+        "upload_seconds": 397.2,
+        "index_seconds": 30.1,
+        "indexed_vectors_count": 1000000,
+        "unindexed_points": 0,
+        "footprint": {
+          "total_bytes": 4119089878,
+          "total_mb": 3928.3,
+          "by_component_mb": {
+            "vector_storage": 3161.7,
+            "vector_index": 45.5,
+            "payload_storage": 603.6,
+            "payload_index": 0.0,
+            "wal": 96.0,
+            "outros": 21.6
+          }
+        },
+        "spot_check": {
+          "sampled": 256,
+          "worst_cosine": 0.9999998526810493,
+          "counted": 1000000
         }
       }
     },
@@ -81,63 +112,96 @@
       "collection": "quati_a1_int8",
       "states": {
         "cold": {
-          "anon_mb": 1259.6,
-          "file_mb": 27.4,
-          "total_mb": 1299.7,
-          "host_available_mb": 15578.7,
-          "host_swap_used_mb": 3115.3,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-3386a28f8aee6b5c422001e67a50db85f85e67224758db22505aec99c32f97b2.scope/container",
-          "taken_at": "2026-08-26T01:37:57.357933+00:00"
+          "anon_mb": 1175.6,
+          "file_mb": 49.7,
+          "total_mb": 1295.8,
+          "host_available_mb": 17912.9,
+          "host_swap_used_mb": 2122.8,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-947e5d9ce99abe3e5121a1880471448110f9096968241a06a1322fb7060ac787.scope/container",
+          "taken_at": "2026-08-27T02:42:39.683552+00:00"
         },
         "warm_hnsw": {
-          "anon_mb": 1126.9,
-          "file_mb": 441.0,
-          "total_mb": 1684.8,
-          "host_available_mb": 15829.2,
-          "host_swap_used_mb": 3109.1,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-3386a28f8aee6b5c422001e67a50db85f85e67224758db22505aec99c32f97b2.scope/container",
-          "taken_at": "2026-08-26T01:38:21.412022+00:00"
+          "anon_mb": 1276.1,
+          "file_mb": 562.7,
+          "total_mb": 1955.8,
+          "host_available_mb": 17679.1,
+          "host_swap_used_mb": 2122.8,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-947e5d9ce99abe3e5121a1880471448110f9096968241a06a1322fb7060ac787.scope/container",
+          "taken_at": "2026-08-27T02:42:56.031913+00:00"
         },
         "exhaustive": {
-          "anon_mb": 1093.4,
-          "file_mb": 3041.7,
-          "total_mb": 4295.0,
-          "host_available_mb": 15869.6,
-          "host_swap_used_mb": 3107.6,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-3386a28f8aee6b5c422001e67a50db85f85e67224758db22505aec99c32f97b2.scope/container",
-          "taken_at": "2026-08-26T01:38:59.493345+00:00"
+          "anon_mb": 1156.0,
+          "file_mb": 3083.6,
+          "total_mb": 4421.9,
+          "host_available_mb": 17718.9,
+          "host_swap_used_mb": 2122.1,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-947e5d9ce99abe3e5121a1880471448110f9096968241a06a1322fb7060ac787.scope/container",
+          "taken_at": "2026-08-27T02:43:32.574697+00:00"
         }
       },
-      "reported_state": "exhaustive",
-      "reported_resident_mb": 4295.0,
+      "reported_state": "warm_hnsw",
+      "reported_resident_mb": 1955.8,
+      "provisioning_floor_mb": 1276.1,
+      "_exhaustive_is_not_a_ceiling": "O exact do Qdrant varre os originais e ignora os códigos, então o estado exaustivo mede o caminho dos originais em todo braço, não o teto do braço quantizado.",
       "predicted_resident_mb": 733,
       "latency_ms_per_query": {
-        "median": 6.68,
-        "p95": 8.18,
-        "min": 5.67,
-        "max": 10.53,
+        "median": 10.63,
+        "p95": 12.12,
+        "min": 9.85,
+        "max": 13.26,
         "samples": 250,
         "passes": 5,
         "queries_per_pass": 50,
         "concurrency": 1,
         "residency_state": "warm_hnsw"
       },
-      "rss_mb": 4605.1,
+      "rss_mb": 4702.6,
       "swap": {
-        "swapped_in_pages": 0,
-        "swapped_out_pages": 0,
-        "is_void": false
+        "container_swap_peak_bytes": 0,
+        "container_zswapped_out_pages": 0,
+        "is_void": false,
+        "_host_counters_are_context_only": {
+          "pswpin": 52860,
+          "pswpout": 561863
+        }
       },
       "footprint": {
-        "total_bytes": 4576395680,
-        "total_mb": 4364.4,
+        "total_bytes": 5118140431,
+        "total_mb": 4881.0,
         "by_component_mb": {
-          "vector_storage": 3667.0,
-          "vector_index": 43.7,
-          "payload_storage": 537.5,
+          "vector_storage": 4014.3,
+          "vector_index": 46.1,
+          "payload_storage": 702.7,
           "payload_index": 0.0,
           "wal": 96.0,
-          "outros": 20.2
+          "outros": 21.9
+        }
+      },
+      "build": {
+        "arm": "A1",
+        "collection": "quati_a1_int8",
+        "points": 1000000,
+        "resumed_from": 0,
+        "upload_seconds": 178.7,
+        "index_seconds": 10.0,
+        "indexed_vectors_count": 1000000,
+        "unindexed_points": 0,
+        "footprint": {
+          "total_bytes": 5118140431,
+          "total_mb": 4881.0,
+          "by_component_mb": {
+            "vector_storage": 4014.3,
+            "vector_index": 46.1,
+            "payload_storage": 702.7,
+            "payload_index": 0.0,
+            "wal": 96.0,
+            "outros": 21.9
+          }
+        },
+        "spot_check": {
+          "sampled": 256,
+          "worst_cosine": 0.9999998526810493,
+          "counted": 1000000
         }
       }
     },
@@ -146,63 +210,96 @@
       "collection": "quati_a2_pq16",
       "states": {
         "cold": {
-          "anon_mb": 694.1,
-          "file_mb": 0.1,
-          "total_mb": 700.1,
-          "host_available_mb": 16331.1,
-          "host_swap_used_mb": 3102.2,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-cc1c2415a1013aa6644f1aaedee13d5517ea1d334f05cd9307365d1d450382b2.scope/container",
-          "taken_at": "2026-08-26T01:44:29.822622+00:00"
+          "anon_mb": 619.2,
+          "file_mb": 28.4,
+          "total_mb": 702.9,
+          "host_available_mb": 18473.5,
+          "host_swap_used_mb": 2112.7,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-45327ab2efb8e651e9e13e2ecafc3a53285709186838dd5e76ceeaf9798727ee.scope/container",
+          "taken_at": "2026-08-27T02:48:33.034342+00:00"
         },
         "warm_hnsw": {
-          "anon_mb": 572.2,
-          "file_mb": 381.3,
-          "total_mb": 1046.0,
-          "host_available_mb": 16276.6,
-          "host_swap_used_mb": 3101.9,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-cc1c2415a1013aa6644f1aaedee13d5517ea1d334f05cd9307365d1d450382b2.scope/container",
-          "taken_at": "2026-08-26T01:44:53.919382+00:00"
+          "anon_mb": 632.8,
+          "file_mb": 353.4,
+          "total_mb": 1088.6,
+          "host_available_mb": 18429.6,
+          "host_swap_used_mb": 2112.7,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-45327ab2efb8e651e9e13e2ecafc3a53285709186838dd5e76ceeaf9798727ee.scope/container",
+          "taken_at": "2026-08-27T02:48:59.332943+00:00"
         },
         "exhaustive": {
-          "anon_mb": 547.0,
-          "file_mb": 3012.8,
-          "total_mb": 3692.2,
-          "host_available_mb": 16351.6,
-          "host_swap_used_mb": 3101.6,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-cc1c2415a1013aa6644f1aaedee13d5517ea1d334f05cd9307365d1d450382b2.scope/container",
-          "taken_at": "2026-08-26T01:45:32.322758+00:00"
+          "anon_mb": 608.7,
+          "file_mb": 2248.3,
+          "total_mb": 2994.4,
+          "host_available_mb": 18312.4,
+          "host_swap_used_mb": 2112.7,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-45327ab2efb8e651e9e13e2ecafc3a53285709186838dd5e76ceeaf9798727ee.scope/container",
+          "taken_at": "2026-08-27T02:49:48.550974+00:00"
         }
       },
-      "reported_state": "exhaustive",
-      "reported_resident_mb": 3692.2,
+      "reported_state": "warm_hnsw",
+      "reported_resident_mb": 1088.6,
+      "provisioning_floor_mb": 632.8,
+      "_exhaustive_is_not_a_ceiling": "O exact do Qdrant varre os originais e ignora os códigos, então o estado exaustivo mede o caminho dos originais em todo braço, não o teto do braço quantizado.",
       "predicted_resident_mb": 183,
       "latency_ms_per_query": {
-        "median": 8.08,
-        "p95": 10.12,
-        "min": 6.97,
-        "max": 32.45,
+        "median": 66.34,
+        "p95": 68.71,
+        "min": 62.84,
+        "max": 69.71,
         "samples": 250,
         "passes": 5,
         "queries_per_pass": 50,
         "concurrency": 1,
         "residency_state": "warm_hnsw"
       },
-      "rss_mb": 4031.4,
+      "rss_mb": 4110.6,
       "swap": {
-        "swapped_in_pages": 0,
-        "swapped_out_pages": 0,
-        "is_void": false
+        "container_swap_peak_bytes": 0,
+        "container_zswapped_out_pages": 0,
+        "is_void": false,
+        "_host_counters_are_context_only": {
+          "pswpin": 53165,
+          "pswpout": 561863
+        }
       },
       "footprint": {
-        "total_bytes": 4034719876,
-        "total_mb": 3847.8,
+        "total_bytes": 4970034385,
+        "total_mb": 4739.8,
         "by_component_mb": {
-          "vector_storage": 3148.7,
-          "vector_index": 44.4,
-          "payload_storage": 538.5,
+          "vector_storage": 3930.5,
+          "vector_index": 45.2,
+          "payload_storage": 642.6,
           "payload_index": 0.0,
           "wal": 96.0,
-          "outros": 20.2
+          "outros": 25.4
+        }
+      },
+      "build": {
+        "arm": "A2",
+        "collection": "quati_a2_pq16",
+        "points": 1000000,
+        "resumed_from": 0,
+        "upload_seconds": 162.6,
+        "index_seconds": 115.0,
+        "indexed_vectors_count": 1000000,
+        "unindexed_points": 0,
+        "footprint": {
+          "total_bytes": 4970034385,
+          "total_mb": 4739.8,
+          "by_component_mb": {
+            "vector_storage": 3930.5,
+            "vector_index": 45.2,
+            "payload_storage": 642.6,
+            "payload_index": 0.0,
+            "wal": 96.0,
+            "outros": 25.4
+          }
+        },
+        "spot_check": {
+          "sampled": 256,
+          "worst_cosine": 0.9999998526810493,
+          "counted": 1000000
         }
       }
     },
@@ -211,63 +308,96 @@
       "collection": "quati_a3_pq32",
       "states": {
         "cold": {
-          "anon_mb": 672.3,
-          "file_mb": 18.7,
-          "total_mb": 705.7,
-          "host_available_mb": 16403.4,
-          "host_swap_used_mb": 3098.9,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-9d56afaa0948e02ace5fbbc4f9bdda3c95894d62c33d30f2e624e3514a685999.scope/container",
-          "taken_at": "2026-08-26T01:49:47.237737+00:00"
+          "anon_mb": 492.2,
+          "file_mb": 3.6,
+          "total_mb": 524.0,
+          "host_available_mb": 18657.7,
+          "host_swap_used_mb": 2109.4,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-adb5102173160229dd6b174a4633ca308c35a533c054c8b82e92e54b8d1ddc83.scope/container",
+          "taken_at": "2026-08-27T02:53:37.040429+00:00"
         },
         "warm_hnsw": {
-          "anon_mb": 525.1,
-          "file_mb": 314.4,
-          "total_mb": 942.3,
-          "host_available_mb": 16496.1,
-          "host_swap_used_mb": 3098.9,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-9d56afaa0948e02ace5fbbc4f9bdda3c95894d62c33d30f2e624e3514a685999.scope/container",
-          "taken_at": "2026-08-26T01:50:15.262695+00:00"
+          "anon_mb": 537.6,
+          "file_mb": 316.5,
+          "total_mb": 941.0,
+          "host_available_mb": 18534.0,
+          "host_swap_used_mb": 2109.4,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-adb5102173160229dd6b174a4633ca308c35a533c054c8b82e92e54b8d1ddc83.scope/container",
+          "taken_at": "2026-08-27T02:53:52.926579+00:00"
         },
         "exhaustive": {
-          "anon_mb": 489.2,
-          "file_mb": 2497.1,
-          "total_mb": 3139.0,
-          "host_available_mb": 16415.2,
-          "host_swap_used_mb": 3098.5,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-9d56afaa0948e02ace5fbbc4f9bdda3c95894d62c33d30f2e624e3514a685999.scope/container",
-          "taken_at": "2026-08-26T01:51:03.152862+00:00"
+          "anon_mb": 472.1,
+          "file_mb": 2920.2,
+          "total_mb": 3520.0,
+          "host_available_mb": 18477.6,
+          "host_swap_used_mb": 2109.1,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-adb5102173160229dd6b174a4633ca308c35a533c054c8b82e92e54b8d1ddc83.scope/container",
+          "taken_at": "2026-08-27T02:54:29.708757+00:00"
         }
       },
-      "reported_state": "exhaustive",
-      "reported_resident_mb": 3139.0,
+      "reported_state": "warm_hnsw",
+      "reported_resident_mb": 941.0,
+      "provisioning_floor_mb": 537.6,
+      "_exhaustive_is_not_a_ceiling": "O exact do Qdrant varre os originais e ignora os códigos, então o estado exaustivo mede o caminho dos originais em todo braço, não o teto do braço quantizado.",
       "predicted_resident_mb": 92,
       "latency_ms_per_query": {
-        "median": 47.68,
-        "p95": 51.61,
-        "min": 43.28,
-        "max": 60.97,
+        "median": 11.49,
+        "p95": 13.13,
+        "min": 10.98,
+        "max": 19.12,
         "samples": 250,
         "passes": 5,
         "queries_per_pass": 50,
         "concurrency": 1,
         "residency_state": "warm_hnsw"
       },
-      "rss_mb": 3963.2,
+      "rss_mb": 3928.4,
       "swap": {
-        "swapped_in_pages": 0,
-        "swapped_out_pages": 0,
-        "is_void": false
+        "container_swap_peak_bytes": 0,
+        "container_zswapped_out_pages": 0,
+        "is_void": false,
+        "_host_counters_are_context_only": {
+          "pswpin": 53167,
+          "pswpout": 561863
+        }
       },
       "footprint": {
-        "total_bytes": 4587086360,
-        "total_mb": 4374.6,
+        "total_bytes": 4142175245,
+        "total_mb": 3950.3,
         "by_component_mb": {
-          "vector_storage": 3609.4,
-          "vector_index": 38.9,
-          "payload_storage": 606.6,
+          "vector_storage": 3189.2,
+          "vector_index": 38.7,
+          "payload_storage": 605.6,
           "payload_index": 0.0,
           "wal": 96.0,
-          "outros": 23.7
+          "outros": 20.8
+        }
+      },
+      "build": {
+        "arm": "A3",
+        "collection": "quati_a3_pq32",
+        "points": 1000000,
+        "resumed_from": 0,
+        "upload_seconds": 151.1,
+        "index_seconds": 55.0,
+        "indexed_vectors_count": 1000000,
+        "unindexed_points": 0,
+        "footprint": {
+          "total_bytes": 4142175245,
+          "total_mb": 3950.3,
+          "by_component_mb": {
+            "vector_storage": 3189.2,
+            "vector_index": 38.7,
+            "payload_storage": 605.6,
+            "payload_index": 0.0,
+            "wal": 96.0,
+            "outros": 20.8
+          }
+        },
+        "spot_check": {
+          "sampled": 256,
+          "worst_cosine": 0.9999998526810493,
+          "counted": 1000000
         }
       }
     },
@@ -276,138 +406,164 @@
       "collection": "quati_a4_binary",
       "states": {
         "cold": {
-          "anon_mb": 461.2,
-          "file_mb": 0.1,
-          "total_mb": 485.3,
-          "host_available_mb": 17251.3,
-          "host_swap_used_mb": 2367.3,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-db6d6218031f250d5606bbc704f6a3e8f1522323331268fca4f919f78df134e2.scope/container",
-          "taken_at": "2026-08-26T02:39:17.073184+00:00"
+          "anon_mb": 459.7,
+          "file_mb": 15.2,
+          "total_mb": 500.7,
+          "host_available_mb": 16515.7,
+          "host_swap_used_mb": 5.2,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-444fd1e4609fba9234d546de6d376023d12f5ad835e704469795960ef7ff4eb7.scope/container",
+          "taken_at": "2026-08-27T14:21:38.592433+00:00"
         },
         "warm_hnsw": {
-          "anon_mb": 545.9,
-          "file_mb": 5.8,
-          "total_mb": 623.5,
-          "host_available_mb": 17023.1,
-          "host_swap_used_mb": 2367.3,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-db6d6218031f250d5606bbc704f6a3e8f1522323331268fca4f919f78df134e2.scope/container",
-          "taken_at": "2026-08-26T02:39:31.732391+00:00"
+          "anon_mb": 554.1,
+          "file_mb": 100.1,
+          "total_mb": 720.5,
+          "host_available_mb": 16273.1,
+          "host_swap_used_mb": 5.2,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-444fd1e4609fba9234d546de6d376023d12f5ad835e704469795960ef7ff4eb7.scope/container",
+          "taken_at": "2026-08-27T14:21:53.330941+00:00"
         },
         "exhaustive": {
-          "anon_mb": 448.5,
-          "file_mb": 5.8,
-          "total_mb": 587.0,
-          "host_available_mb": 17143.4,
-          "host_swap_used_mb": 2367.3,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-db6d6218031f250d5606bbc704f6a3e8f1522323331268fca4f919f78df134e2.scope/container",
-          "taken_at": "2026-08-26T02:40:04.298577+00:00"
+          "anon_mb": 451.5,
+          "file_mb": 3040.7,
+          "total_mb": 3616.1,
+          "host_available_mb": 16585.7,
+          "host_swap_used_mb": 5.2,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-444fd1e4609fba9234d546de6d376023d12f5ad835e704469795960ef7ff4eb7.scope/container",
+          "taken_at": "2026-08-27T14:22:30.614493+00:00"
         }
       },
       "reported_state": "warm_hnsw",
-      "reported_resident_mb": 623.5,
-      "provisioning_floor_mb": 545.9,
+      "reported_resident_mb": 720.5,
+      "provisioning_floor_mb": 554.1,
       "_exhaustive_is_not_a_ceiling": "O exact do Qdrant varre os originais e ignora os códigos, então o estado exaustivo mede o caminho dos originais em todo braço, não o teto do braço quantizado.",
       "predicted_resident_mb": 92,
       "latency_ms_per_query": {
-        "median": 4.68,
-        "p95": 5.72,
-        "min": 4.07,
-        "max": 7.0,
+        "median": 4.55,
+        "p95": 6.41,
+        "min": 3.95,
+        "max": 23.15,
         "samples": 250,
         "passes": 5,
         "queries_per_pass": 50,
         "concurrency": 1,
         "residency_state": "warm_hnsw"
       },
-      "rss_mb": 3645.8,
+      "rss_mb": 3645.5,
       "swap": {
         "container_swap_peak_bytes": 0,
         "container_zswapped_out_pages": 0,
         "is_void": false,
         "_host_counters_are_context_only": {
-          "pswpin": 24867,
-          "pswpout": 272101
+          "pswpin": 0,
+          "pswpout": 0
         }
       },
       "footprint": {
-        "total_bytes": 3896595788,
-        "total_mb": 3716.1,
+        "total_bytes": 3894427347,
+        "total_mb": 3714.0,
         "by_component_mb": {
           "vector_storage": 3022.4,
-          "vector_index": 41.1,
-          "payload_storage": 536.5,
+          "vector_index": 41.0,
+          "payload_storage": 534.5,
           "payload_index": 0.0,
           "wal": 96.0,
           "outros": 20.2
         }
       },
-      "build": null
+      "build": {
+        "arm": "A4",
+        "collection": "quati_a4_binary",
+        "points": 1000000,
+        "resumed_from": 0,
+        "upload_seconds": 146.5,
+        "index_seconds": 11.3,
+        "indexed_vectors_count": 1000000,
+        "unindexed_points": 0,
+        "footprint": {
+          "total_bytes": 4740303531,
+          "total_mb": 4520.7,
+          "by_component_mb": {
+            "vector_storage": 3592.7,
+            "vector_index": 45.1,
+            "payload_storage": 699.7,
+            "payload_index": 0.0,
+            "wal": 160.0,
+            "outros": 23.2
+          }
+        },
+        "spot_check": {
+          "sampled": 256,
+          "worst_cosine": 0.9999998526810493,
+          "counted": 1000000
+        }
+      }
     },
     {
       "arm": "A5",
       "collection": "quati_a4_binary",
       "states": {
         "cold": {
-          "anon_mb": 443.3,
+          "anon_mb": 464.3,
           "file_mb": 0.1,
-          "total_mb": 486.2,
-          "host_available_mb": 17207.9,
-          "host_swap_used_mb": 2367.1,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-980b84c2bb225b93b8224c7e36c724a3ae386cdd38b1002c33d1553aae9249ce.scope/container",
-          "taken_at": "2026-08-26T02:40:45.743709+00:00"
+          "total_mb": 488.4,
+          "host_available_mb": 16708.9,
+          "host_swap_used_mb": 5.2,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0ee406caf720ec38cf41a36ac5a6681dc815354e90ea1ff172a9f624ff557e0d.scope/container",
+          "taken_at": "2026-08-27T14:22:47.261149+00:00"
         },
         "warm_hnsw": {
-          "anon_mb": 499.6,
-          "file_mb": 0.1,
-          "total_mb": 575.1,
-          "host_available_mb": 17098.9,
-          "host_swap_used_mb": 2367.1,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-980b84c2bb225b93b8224c7e36c724a3ae386cdd38b1002c33d1553aae9249ce.scope/container",
-          "taken_at": "2026-08-26T02:41:00.997193+00:00"
+          "anon_mb": 561.4,
+          "file_mb": 2.7,
+          "total_mb": 638.5,
+          "host_available_mb": 16479.8,
+          "host_swap_used_mb": 5.2,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0ee406caf720ec38cf41a36ac5a6681dc815354e90ea1ff172a9f624ff557e0d.scope/container",
+          "taken_at": "2026-08-27T14:23:01.819856+00:00"
         },
         "exhaustive": {
-          "anon_mb": 445.7,
-          "file_mb": 0.1,
-          "total_mb": 557.2,
-          "host_available_mb": 17192.3,
-          "host_swap_used_mb": 2367.0,
-          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-980b84c2bb225b93b8224c7e36c724a3ae386cdd38b1002c33d1553aae9249ce.scope/container",
-          "taken_at": "2026-08-26T02:41:34.831508+00:00"
+          "anon_mb": 450.4,
+          "file_mb": 2.7,
+          "total_mb": 562.8,
+          "host_available_mb": 16624.1,
+          "host_swap_used_mb": 5.2,
+          "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/libpod-0ee406caf720ec38cf41a36ac5a6681dc815354e90ea1ff172a9f624ff557e0d.scope/container",
+          "taken_at": "2026-08-27T14:23:34.673523+00:00"
         }
       },
       "reported_state": "warm_hnsw",
-      "reported_resident_mb": 575.1,
-      "provisioning_floor_mb": 499.6,
+      "reported_resident_mb": 638.5,
+      "provisioning_floor_mb": 561.4,
       "_exhaustive_is_not_a_ceiling": "O exact do Qdrant varre os originais e ignora os códigos, então o estado exaustivo mede o caminho dos originais em todo braço, não o teto do braço quantizado.",
       "predicted_resident_mb": 92,
       "latency_ms_per_query": {
-        "median": 8.72,
-        "p95": 10.55,
-        "min": 7.31,
-        "max": 17.91,
+        "median": 8.1,
+        "p95": 9.97,
+        "min": 7.19,
+        "max": 11.91,
         "samples": 250,
         "passes": 5,
         "queries_per_pass": 50,
         "concurrency": 1,
         "residency_state": "warm_hnsw"
       },
-      "rss_mb": 6335.9,
+      "rss_mb": 6379.7,
       "swap": {
         "container_swap_peak_bytes": 0,
         "container_zswapped_out_pages": 0,
         "is_void": false,
         "_host_counters_are_context_only": {
-          "pswpin": 24876,
-          "pswpout": 272101
+          "pswpin": 0,
+          "pswpout": 0
         }
       },
       "footprint": {
-        "total_bytes": 3896595788,
-        "total_mb": 3716.1,
+        "total_bytes": 3894427347,
+        "total_mb": 3714.0,
         "by_component_mb": {
           "vector_storage": 3022.4,
-          "vector_index": 41.1,
-          "payload_storage": 536.5,
+          "vector_index": 41.0,
+          "payload_storage": 534.5,
           "payload_index": 0.0,
           "wal": 96.0,
           "outros": 20.2
