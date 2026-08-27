@@ -124,6 +124,29 @@ uma configuração, e tem resposta mecânica.
 > latência, a compressão compra tempo, e aí o par binário + rescoring é o que
 > recupera qualidade sem devolver a velocidade toda.
 
+## T8 — Varredura de oversampling (A5, sobre a coleção do A4)
+
+Afrouxa um held-constant sob rótulo: `oversampling` é varrido, o resto segue a
+matriz. Serve para dizer se o ponto de operação do A5 é bom, e não apenas qual
+ele é.
+
+| Oversampling | nDCG@10 | Latência mediana (ms) |
+|---|---|---|
+| 1x | 0.2747 | 5.4 |
+| 2x | 0.3388 | 6.6 |
+| 4x ← | 0.3648 | 8.8 |
+| 8x | 0.4013 | 13.1 |
+| 16x | 0.4187 | 20.6 |
+
+> **A escada não é plana: amplitude de +0.1439 em nDCG@10.** O ponto pré-registrado (4x) não é o melhor da escada — a 16x o braço binário chega a 0.4187.
+>
+> **Consequência para o texto:** o A5 reportado nas outras tabelas usa o valor
+> pré-registrado, e é esse que deve ser citado como resultado. Esta varredura é
+> diagnóstico — mostra que o parâmetro tem efeito forte e que o ponto de
+> operação escolhido antes da medição era conservador. Trocar o valor
+> reportado por causa do resultado seria escolher o ponto depois de ver os
+> dados.
+
 ## T6 — Validação do aparelho
 
 Reproduz o protocolo dos autores do Quati — run sobre o corpus de 1M pontuado
@@ -143,4 +166,4 @@ E5-base publicado sobre este benchmark. É o que autoriza ler as outras tabelas.
 - HNSW m=16, ef_construct=100, ef_search=128, Cosine
 - Consultas julgadas: 50 (pontuáveis: 49)
 - Kernel `7.0.11-200.nobara.fc43.x86_64`, Python 3.14.4
-- Regenerado em 2026-08-27T14:27:40.006328+00:00 no commit `683ad9bedca0`
+- Regenerado em 2026-08-27T14:31:37.254821+00:00 no commit `38022a4952d5`

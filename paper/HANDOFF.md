@@ -24,6 +24,15 @@ nessa saída, ele não foi medido — e não deve entrar no texto.
 Roda offline, sem GPU e sem servidor: lê apenas os arquivos de evidência em
 `runs/`. Reproduzir as medições do zero é outra história — ver §7.
 
+**Aborta com código 1 se faltar evidência**, em vez de emitir tabela com
+lacunas: um `—` copiado para o LaTeX vira lacuna publicada. Verificado de
+propósito removendo a medição de um braço. Existe `--allow-partial` para
+inspecionar estado intermediário durante a medição; **nenhuma tabela reportada
+deve sair desse modo**.
+
+Rodar duas vezes produz números byte-idênticos — só a linha de carimbo
+(timestamp) difere, e ela é metadado de procedência, não resultado.
+
 ---
 
 ## 2. O que o estudo mediu
@@ -159,6 +168,19 @@ fronteira tem quatro pontos (A0, A1, A4, A5), e é aí que comprimir faz sentido
 desonesto:** se a restrição é memória a provisionar, não comprima; se é
 latência, comprima e use rescoring para recuperar qualidade.
 
+**A varredura de oversampling (T8) mostra que o ponto de operação
+pré-registrado era conservador.** A escada não é plana: amplitude de +0,1439 em
+nDCG@10 entre 1x e 16x. Em 4x — o valor pré-registrado — o A5 dá 0,3648; em 16x
+chega a **0,4187**, a 20,6 ms.
+
+⚠️ **Como escrever isso sem cometer o erro que o estudo evita.** O A5 reportado
+em todas as outras tabelas usa o valor pré-registrado, e é esse que deve ser
+citado como resultado. A varredura é diagnóstico. **Trocar o número reportado
+por causa dela seria escolher o ponto de operação depois de ver os dados**, que
+é exatamente a liberdade que o pré-registro existe para remover. A forma
+honesta: reportar 4x como resultado e citar a varredura como evidência de que o
+parâmetro tem efeito forte e merece ser sintonizado em produção.
+
 **A geometria (T5) explica o colapso binário em vez de apenas relatá-lo.** O
 espaço parece centrado no agregado (média das médias por dimensão −0,00018),
 mas dimensão a dimensão o deslocamento é de 1,614 desvios: 323 das 768
@@ -200,7 +222,15 @@ páginas. Se faltar espaço, corte uma figura.
    perfil de cold start de produção.
 9. **As figuras de page cache refletem um conjunto de trabalho aquecido por 50
    consultas.** Uma carga mais diversa tocaria mais dos originais mapeados.
-10. **O modo `exact` do Qdrant ignora a quantização.** Ele varre os vetores
+10. **Os números de qualidade e os de custo vêm de builds diferentes do mesmo
+    índice.** As tabelas de qualidade saem dos runs de recuperação de
+    2026-08-25; as de memória, latência e disco, da varredura de 2026-08-27,
+    que reconstruiu cada coleção. São a mesma configuração, mas não a mesma
+    instância do grafo HNSW, e a diferença é observável: o A5 dá 0,3770 no run
+    reportado e 0,3648 no índice reconstruído. Está dentro da largura do
+    intervalo de confiança, mas o texto deve dizer que qualidade e custo foram
+    medidos em builds distintos em vez de deixar implícito que são o mesmo.
+11. **O modo `exact` do Qdrant ignora a quantização.** Ele varre os vetores
     float32 originais, então não serve como teto de memória de braço
     quantizado, e a decomposição do erro precisou de uma varredura de `ef` no
     lugar dele. O estado reportado é `warm_hnsw`.
@@ -228,8 +258,6 @@ Hashes de corpus, qrels e artefato de vetores estão em `paper/numbers.json`.
 
 Honestidade sobre o estado da entrega:
 
-- **RAF-69** — varredura de oversampling para o A5. O A5 usa um único ponto de
-  operação; a curva completa não foi levantada.
 - **RAF-64** — referência BM25 própria. A calibração passou sem ela, usando o
   BM25 publicado pelos autores do Quati como piso de faixa.
 - **RAF-81** — revisão adversarial interna contra as limitações declaradas.

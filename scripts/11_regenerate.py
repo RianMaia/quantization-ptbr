@@ -6,15 +6,21 @@ nem digita número nenhum: roda isto e copia. Todo valor sai de um arquivo de
 evidência produzido por um script de medição, e a procedência de cada um está
 no bloco final.
 
-**Não mede nada.** Se um arquivo de evidência falta, a tabela correspondente
-sai marcada como ausente em vez de ser preenchida com estimativa — uma lacuna
-declarada é recuperável, um número inventado não.
+**Não mede nada, e não completa nada.** Um número que falta nunca é estimado:
+uma lacuna declarada é recuperável, um número inventado não.
+
+**Aborta com código não-zero quando falta evidência.** RAF-74 pré-registrou
+isso, e a razão é que regeneração parcial silenciosa põe tabela incompleta no
+artigo — um `—` copiado para o LaTeX vira lacuna publicada. Para inspecionar um
+estado intermediário durante a medição, passe `--allow-partial`, que marca as
+lacunas e sai com zero; nenhuma tabela reportada deve sair desse modo.
 
 Saídas em `paper/`: `tables.md` para colar, `numbers.json` para conferir.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from datetime import UTC, datetime
 
@@ -29,6 +35,15 @@ OUTPUT_DIR = corpus.REPO_ROOT / "paper"
 REPORTED_STATE = "warm_hnsw"
 
 MISSING = "—"
+
+#: Lacunas encontradas na passada. Preenchida pelas funções de tabela e cobrada
+#: no fim: é o que decide entre sair com zero e abortar.
+GAPS: list[str] = []
+
+
+def gap(what: str) -> str:
+    GAPS.append(what)
+    return MISSING
 
 
 def load(name: str) -> dict | None:
@@ -61,7 +76,8 @@ def quality_rows(numbers: dict) -> list[list[str]]:
     for arm in arms():
         evaluation = load(f"eval_{arm['id'].lower()}_hnsw.json")
         if not evaluation:
-            rows.append([arm["id"], arm["label"], MISSING, MISSING, MISSING, MISSING])
+            marker = gap(f"qualidade do {arm['id']} (runs/eval_{arm['id'].lower()}_hnsw.json)")
+            rows.append([arm["id"], arm["label"], marker, marker, marker, marker])
             continue
         aggregate = evaluation["evaluation"]["aggregate"]
         comparison = by_arm.get(arm["id"])
@@ -105,6 +121,7 @@ def cost_rows(numbers: dict) -> tuple[list[list[str]], list[str]]:
     """
     measured = load("m3_arms.json")
     if not measured:
+        gap("medições de memória e latência (runs/m3_arms.json)")
         return [], ["`runs/m3_arms.json` ausente: rode `scripts/10_measure_arms.py`."]
 
     by_arm = {row["arm"]: row for row in measured["arms"]}
@@ -114,7 +131,8 @@ def cost_rows(numbers: dict) -> tuple[list[list[str]], list[str]]:
     for arm in arms():
         row = by_arm.get(arm["id"])
         if not row:
-            rows.append([arm["id"], arm["label"], MISSING, MISSING, MISSING, MISSING, MISSING])
+            marker = gap(f"custo do {arm['id']} em runs/m3_arms.json")
+            rows.append([arm["id"], arm["label"], marker] + [marker] * 4)
             notes.append(f"{arm['id']}: não medido nesta execução.")
             continue
         state = row["states"][REPORTED_STATE]
@@ -171,7 +189,8 @@ def latency_rows(numbers: dict) -> list[list[str]]:
     for arm in arms():
         row = by_arm.get(arm["id"])
         if not row:
-            rows.append([arm["id"], arm["label"], MISSING, MISSING, MISSING])
+            marker = gap(f"latência do {arm['id']} em runs/m3_arms.json")
+            rows.append([arm["id"], arm["label"], marker, marker, marker])
             continue
         latency = row["latency_ms_per_query"]
         rows.append(
@@ -348,6 +367,48 @@ def pareto_lines(numbers: dict) -> list[str]:
     return lines
 
 
+def oversampling_lines(numbers: dict) -> list[str]:
+    """T8 — o oversampling do braço binário, varrido em vez de assumido."""
+    sweep = load("m3.4_oversampling.json")
+    if not sweep:
+        return []
+    numbers["oversampling"] = sweep
+    preregistered = sweep["preregistered_oversampling"]
+    rows = [
+        [
+            f"{row['oversampling']:.0f}x" + (" ←" if row["oversampling"] == preregistered else ""),
+            f"{row[sweep['metric']]:.4f}",
+            f"{row['latency_ms_median']:.1f}",
+        ]
+        for row in sweep["by_oversampling"]
+    ]
+    best = sweep["best"]
+    lines = [table(["Oversampling", sweep["metric"], "Latência mediana (ms)"], rows)]
+    if abs(sweep["spread_over_ladder"]) < 0.005:
+        lines += [
+            "",
+            "> A escada é plana: o ganho é do rescoring, não do oversampling.",
+        ]
+    else:
+        lines += [
+            "",
+            (
+                f"> **A escada não é plana: amplitude de {sweep['spread_over_ladder']:+.4f} "
+                f"em {sweep['metric']}.** O ponto pré-registrado ({preregistered:.0f}x) não é "
+                f"o melhor da escada — a {best['oversampling']:.0f}x o braço binário chega a "
+                f"{best[sweep['metric']]:.4f}."
+            ),
+            ">",
+            "> **Consequência para o texto:** o A5 reportado nas outras tabelas usa o valor",
+            "> pré-registrado, e é esse que deve ser citado como resultado. Esta varredura é",
+            "> diagnóstico — mostra que o parâmetro tem efeito forte e que o ponto de",
+            "> operação escolhido antes da medição era conservador. Trocar o valor",
+            "> reportado por causa do resultado seria escolher o ponto depois de ver os",
+            "> dados.",
+        ]
+    return lines
+
+
 def calibration_lines(numbers: dict) -> list[str]:
     """T6 — a validação do aparelho, que é o que autoriza todo o resto.
 
@@ -436,6 +497,14 @@ def provenance(numbers: dict) -> list[str]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="marca lacunas e sai com zero; nenhuma tabela reportada deve sair deste modo",
+    )
+    args = parser.parse_args()
+
     numbers: dict = {
         "quality": {},
         "cost": {},
@@ -543,6 +612,19 @@ def main() -> int:
             *pareto,
         ]
 
+    oversampling = oversampling_lines(numbers)
+    if oversampling:
+        sections += [
+            "",
+            "## T8 — Varredura de oversampling (A5, sobre a coleção do A4)",
+            "",
+            "Afrouxa um held-constant sob rótulo: `oversampling` é varrido, o resto segue a",
+            "matriz. Serve para dizer se o ponto de operação do A5 é bom, e não apenas qual",
+            "ele é.",
+            "",
+            *oversampling,
+        ]
+
     calibration = calibration_lines(numbers)
     if calibration:
         sections += [
@@ -565,9 +647,21 @@ def main() -> int:
     numbers_path.write_text(
         json.dumps(numbers, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
+    numbers["gaps"] = GAPS
     print("\n".join(sections))
     print(f"\n→ {tables_path}\n→ {numbers_path}")
-    return 0
+
+    if not GAPS:
+        return 0
+    print(f"\n{len(GAPS)} lacuna(s) de evidência:")
+    for missing in GAPS:
+        print(f"  - {missing}")
+    if args.allow_partial:
+        print("\n--allow-partial: saindo com zero. Esta saída NÃO é publicável.")
+        return 0
+    print("\nAbortando: regeneração parcial põe tabela incompleta no artigo.")
+    print("Para inspecionar mesmo assim, rode com --allow-partial.")
+    return 1
 
 
 if __name__ == "__main__":
