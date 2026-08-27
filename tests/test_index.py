@@ -301,6 +301,18 @@ def test_an_inflated_count_is_never_read_as_a_finished_build():
         )
 
 
+def test_a_collection_stuck_inflated_is_not_waited_on_for_hours():
+    """O A4 encalhou em 144 segmentos e 2.300.544 indexados e ficou lá.
+
+    Sem um teto próprio para o estado inflado, o relógio de travamento reinicia
+    a cada volta e a espera corre as 4h inteiras do teto global.
+    """
+    stuck = FakeInfo(models.CollectionStatus.GREEN, 2_300_544)
+    client = FakeClient(states=[stuck])
+    with pytest.raises(TimeoutError, match="encalhou"):
+        index.wait_until_indexed(client, "c", expected=1_000_000, stall_timeout=0, poll=0)
+
+
 def test_the_optimizer_is_given_time_while_the_count_is_still_inflated():
     """Contagem inflada é trabalho em curso, não travamento: o relógio reinicia."""
     client = FakeClient(
@@ -311,7 +323,7 @@ def test_the_optimizer_is_given_time_while_the_count_is_still_inflated():
         ]
     )
     _, indexed = index.wait_until_indexed(
-        client, "c", expected=1_000_000, stall_timeout=0, poll=0
+        client, "c", expected=1_000_000, stall_timeout=30, poll=0
     )
     assert indexed == 1_000_000
 

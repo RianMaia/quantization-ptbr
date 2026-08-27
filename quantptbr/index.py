@@ -259,7 +259,7 @@ def wait_until_indexed(
     deadline = started + timeout
     best = -1
     progressed_at = started
-    announced = False
+    inflated_since: float | None = None
     while True:
         info = client.get_collection(collection)
         raw = info.indexed_vectors_count or 0
@@ -273,14 +273,25 @@ def wait_until_indexed(
             return time.monotonic() - started, int(indexed)
         now = time.monotonic()
         if not converged:
-            if not announced:
+            # Reescrever segmento é trabalho em curso, mas não é ilimitado: uma
+            # coleção pode encalhar inflada e ficar assim. Medido em 2026-08-26,
+            # o A4 parou em 144 segmentos e 2.300.544 indexados e continuava lá
+            # meia hora depois, com o otimizador reportando `ok`.
+            if inflated_since is None:
+                inflated_since = now
                 print(
                     f"    {raw:,} vetores indexados para {expected:,} pontos: segmentos "
                     "sobrepostos, o otimizador ainda está reescrevendo"
                 )
-                announced = True
+            elif now - inflated_since > stall_timeout:
+                raise TimeoutError(
+                    f"{collection}: {raw:,} vetores indexados para {expected:,} pontos há "
+                    f"{stall_timeout / 60:.0f} min — o otimizador encalhou com segmentos "
+                    "sobrepostos e não converge; reconstrua a coleção"
+                )
             progressed_at = now
         elif indexed > best:
+            inflated_since = None
             best, progressed_at = indexed, now
         elif now - progressed_at > stall_timeout:
             missing = expected - indexed
