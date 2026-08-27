@@ -166,4 +166,4 @@ E5-base publicado sobre este benchmark. É o que autoriza ler as outras tabelas.
 - HNSW m=16, ef_construct=100, ef_search=128, Cosine
 - Consultas julgadas: 50 (pontuáveis: 49)
 - Kernel `7.0.11-200.nobara.fc43.x86_64`, Python 3.14.4
-- Regenerado em 2026-08-27T14:31:37.254821+00:00 no commit `38022a4952d5`
+- Regenerado em 2026-08-27T14:40:01.985624+00:00 no commit `fb40243aac69`
