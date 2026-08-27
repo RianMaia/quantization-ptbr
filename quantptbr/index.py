@@ -105,17 +105,30 @@ def optimizers_config() -> models.OptimizersConfigDiff:
     Deixado em 0, o Qdrant o deriva da contagem de CPUs. A topologia do índice
     passaria a depender do hardware, e com ela a taxa fixa de 32 MB por segmento
     que o armazenamento de payload pré-aloca.
-
-    `indexing_threshold` baixo por uma razão à parte: medido em 2026-08-26, o
-    lote final do upload pode cair num segmento novo pequeno o bastante para
-    ficar abaixo do padrão do Qdrant, e esse segmento nunca ganha HNSW nem é
-    fundido sem mais escrita na coleção — `indexed_vectors_count` congela para
-    sempre. Não é campo controlado da matriz (`require_topology` não o lê); só
-    garante que todo segmento seja indexado, não muda o que o estudo mede.
     """
     return models.OptimizersConfigDiff(
-        default_segment_number=stats.matrix()["held_constant"]["segments"],
-        indexing_threshold=1,
+        default_segment_number=stats.matrix()["held_constant"]["segments"]
+    )
+
+
+def sweep_residual_segments(client, collection: str) -> None:
+    """Baixa o `indexing_threshold` **depois** que a escrita terminou.
+
+    O lote final do upload pode cair num segmento novo pequeno demais para o
+    limiar padrão do Qdrant (~10 MB). Esse segmento nunca ganha HNSW nem é
+    fundido sem mais escrita, e `indexed_vectors_count` congela abaixo do total
+    para sempre — travou o A0 uma vez e o A4 duas em 2026-08-26.
+
+    **O limiar tem de descer só no fim, nunca na criação.** Aplicado desde a
+    criação, cada segmento nasce elegível a indexação enquanto os pontos ainda
+    entram, e o otimizador reescreve segmento sobre segmento durante o upload
+    inteiro: o A4 foi de 3,7 GB para 43,3 GB em disco, e o container passou a
+    demorar mais de um minuto para subir. Aqui a coleção já está parada, então
+    o otimizador faz uma passada só sobre o que sobrou.
+    """
+    client.update_collection(
+        collection_name=collection,
+        optimizers_config=models.OptimizersConfigDiff(indexing_threshold=1),
     )
 
 
@@ -384,6 +397,7 @@ def build(client, arm_id: str, recreate: bool = False, resume: bool = False, arr
     upload_seconds = time.perf_counter() - started
 
     print(f"{arm_id}: aguardando o otimizador …")
+    sweep_residual_segments(client, collection)
     index_seconds, indexed = wait_until_indexed(client, collection, len(passage_ids))
 
     # Config lida de volta do servidor: uma coleção cuja quantização não pegou

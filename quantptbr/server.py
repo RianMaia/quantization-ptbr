@@ -47,7 +47,14 @@ def is_running() -> bool:
     return CONTAINER in result.stdout.split()
 
 
-def start(wait: float = 60.0) -> None:
+#: O servidor relê os segmentos ao subir, e a medição reinicia o container com
+#: a coleção já construída. Medido em 2026-08-26: 60 s não bastaram para uma
+#: coleção grande, e a varredura morreu entre dois braços. Uma partida lenta é
+#: um dado sobre o braço; um timeout no meio dela só apaga a medição.
+READY_TIMEOUT = 300.0
+
+
+def start(wait: float = READY_TIMEOUT) -> None:
     """Sobe o servidor se ainda não estiver de pé. Idempotente."""
     if is_running():
         return
@@ -83,7 +90,7 @@ def restart(fresh_storage: bool = False) -> None:
     start()
 
 
-def wait_until_ready(timeout: float = 60.0) -> dict:
+def wait_until_ready(timeout: float = READY_TIMEOUT) -> dict:
     deadline = time.monotonic() + timeout
     last: Exception | None = None
     while time.monotonic() < deadline:

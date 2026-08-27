@@ -119,10 +119,30 @@ def test_topology_and_distance_are_held_constant_across_arms():
     assert index.optimizers_config().default_segment_number == held["segments"]
 
 
-def test_indexing_threshold_is_low_enough_that_no_segment_escapes_it():
-    """0 desativaria a indexação por completo — o objetivo é o oposto."""
-    threshold = index.optimizers_config().indexing_threshold
-    assert 0 < threshold < index.BATCH * 3072 / 1024
+def test_creation_does_not_lower_the_indexing_threshold():
+    """O limiar baixo na criação inflou o A4 de 3,7 GB para 43,3 GB em disco.
+
+    Cada segmento nascia elegível a indexação enquanto os pontos ainda entravam,
+    e o otimizador reescrevia segmento sobre segmento durante o upload inteiro.
+    """
+    assert index.optimizers_config().indexing_threshold is None
+
+
+def test_residual_sweep_lowers_the_threshold_after_the_upload():
+    """E o limiar tem de descer o bastante para alcançar o segmento residual."""
+
+    class Recorder:
+        def __init__(self):
+            self.calls = []
+
+        def update_collection(self, collection_name, optimizers_config):
+            self.calls.append((collection_name, optimizers_config))
+
+    recorder = Recorder()
+    index.sweep_residual_segments(recorder, "c")
+    (collection, config), = recorder.calls
+    assert collection == "c"
+    assert 0 < config.indexing_threshold < index.BATCH * 3072 / 1024
 
 
 def test_segment_count_is_pinned_instead_of_derived_from_the_machine():
