@@ -81,13 +81,19 @@ def arm_config(arm_id: str) -> dict:
 
 
 def search_params(
-    arm_id: str, mode: str, ef: int | None = None, rescore: bool | None = None
+    arm_id: str,
+    mode: str,
+    ef: int | None = None,
+    rescore: bool | None = None,
+    oversampling: float | None = None,
 ) -> models.SearchParams:
     """Parâmetros de busca de um braço, derivados da matriz — nunca digitados aqui.
 
-    `ef` e `rescore` existem só para o diagnóstico de decomposição de M4.3, que
-    precisa afrouxar dois held-constants de propósito e sob rótulo. Toda tabela
-    reportada usa os valores da matriz, que é o que se obtém omitindo os dois.
+    `ef`, `rescore` e `oversampling` existem só para os diagnósticos que precisam
+    afrouxar um held-constant de propósito e sob rótulo: a decomposição de M4.3
+    varre `ef` com `rescore` desligado, e a varredura de M3.4 varre
+    `oversampling`. Toda tabela reportada usa os valores da matriz, que é o que
+    se obtém omitindo os três.
     """
     if mode not in stats.matrix()["search_modes"]:
         raise ValueError(f"modo {mode!r} não pré-registrado")
@@ -100,7 +106,11 @@ def search_params(
             rescore=declared_rescore,
             # Sem rescoring não há o que reordenar, e pedir oversampling assim
             # só ampliaria a lista de candidatos sem mudar o critério.
-            oversampling=overrides.get("oversampling") if declared_rescore else None,
+            oversampling=(
+                (overrides.get("oversampling") if oversampling is None else oversampling)
+                if declared_rescore
+                else None
+            ),
         )
     return models.SearchParams(
         exact=(mode == "exact"),
@@ -116,6 +126,7 @@ def retrieve(
     depth: int = DEPTH,
     ef: int | None = None,
     rescore: bool | None = None,
+    oversampling: float | None = None,
     record_ms: list[float] | None = None,
 ) -> list[Row]:
     """Recupera para todas as consultas julgadas, com desempate determinístico."""
@@ -133,7 +144,7 @@ def retrieve(
 
     query_ids, query_vectors = load_queries()
     passage_ids = corpus.load_passage_ids()
-    params = search_params(arm_id, mode, ef=ef, rescore=rescore)
+    params = search_params(arm_id, mode, ef=ef, rescore=rescore, oversampling=oversampling)
 
     rows: list[Row] = []
     for query_id, vector in zip(query_ids, query_vectors, strict=True):
