@@ -247,28 +247,44 @@ def wait_until_indexed(
     pontos. Aceitar o resíduo declarado é mais barato e mais honesto: esses
     pontos são buscados por varredura exata, com resultado correto.
 
-    A contagem devolvida é limitada a `expected`: o Qdrant soma segmentos
-    sobrepostos durante uma re-otimização, e `indexed >= expected` chegou a dar
-    build por concluído em cima de exatamente o estado patológico acima.
+    **Contagem acima do total é prova de que o otimizador não terminou.** O
+    Qdrant soma os segmentos, e durante uma re-otimização os mesmos pontos vivem
+    em segmentos sobrepostos: o A4 reportou 2.300.544 indexados para 1M de
+    pontos, com 144 segmentos no lugar de 16. Limitar a contagem a `expected`
+    não resolve — `min(2.300.544, 1M) >= 1M` continua passando, e o build foi
+    dado por concluído em 5 s sobre uma coleção que ainda ia churnar por meia
+    hora. Enquanto a contagem estiver inflada, a coleção não está pronta.
     """
     started = time.monotonic()
     deadline = started + timeout
     best = -1
     progressed_at = started
+    announced = False
     while True:
         info = client.get_collection(collection)
-        indexed = min(info.indexed_vectors_count or 0, expected)
+        raw = info.indexed_vectors_count or 0
         if info.status == models.CollectionStatus.RED:
             raise RuntimeError(f"{collection}: coleção em estado RED")
+        # Segmentos sobrepostos: o otimizador ainda está reescrevendo.
+        converged = raw <= expected
+        indexed = min(raw, expected)
         green = info.status == models.CollectionStatus.GREEN
-        if green and indexed >= expected:
+        if green and converged and indexed >= expected:
             return time.monotonic() - started, int(indexed)
         now = time.monotonic()
-        if indexed > best:
+        if not converged:
+            if not announced:
+                print(
+                    f"    {raw:,} vetores indexados para {expected:,} pontos: segmentos "
+                    "sobrepostos, o otimizador ainda está reescrevendo"
+                )
+                announced = True
+            progressed_at = now
+        elif indexed > best:
             best, progressed_at = indexed, now
         elif now - progressed_at > stall_timeout:
             missing = expected - indexed
-            if green and missing <= tolerance:
+            if green and converged and missing <= tolerance:
                 print(
                     f"    {missing:,} pontos em segmento residual, fora do HNSW e "
                     "buscados por varredura exata"

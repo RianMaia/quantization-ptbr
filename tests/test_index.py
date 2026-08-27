@@ -286,15 +286,34 @@ def test_a_shortfall_beyond_tolerance_is_still_a_failed_build():
         index.wait_until_indexed(client, "c", expected=1_000_000, stall_timeout=0, poll=0)
 
 
-def test_overlapping_segments_cannot_report_the_build_as_finished():
-    """O A4 chegou a 3.052.848 indexados para 1M de pontos em re-otimização.
+def test_an_inflated_count_is_never_read_as_a_finished_build():
+    """O A4 reportou 2.300.544 indexados para 1M de pontos, verde, em 5 s.
 
-    Somando segmentos sobrepostos, `indexed >= expected` deu por concluído um
-    build com 260 segmentos e 30,4 GB em disco.
+    Limitar a contagem a `expected` não bastava: `min(2.300.544, 1M) >= 1M`
+    passava, e o build era dado por concluído sobre 144 segmentos sobrepostos
+    que ainda iam churnar por meia hora.
     """
-    client = FakeClient(states=[FakeInfo(models.CollectionStatus.GREY, 3_052_848)])
+    inflated = FakeInfo(models.CollectionStatus.GREEN, 2_300_544)
+    client = FakeClient(states=[inflated])
     with pytest.raises(TimeoutError):
-        index.wait_until_indexed(client, "c", expected=1_000_000, stall_timeout=0, poll=0)
+        index.wait_until_indexed(
+            client, "c", expected=1_000_000, timeout=0, stall_timeout=0, poll=0
+        )
+
+
+def test_the_optimizer_is_given_time_while_the_count_is_still_inflated():
+    """Contagem inflada é trabalho em curso, não travamento: o relógio reinicia."""
+    client = FakeClient(
+        states=[
+            FakeInfo(models.CollectionStatus.GREEN, 2_300_544),
+            FakeInfo(models.CollectionStatus.GREEN, 1_500_000),
+            FakeInfo(models.CollectionStatus.GREEN, 1_000_000),
+        ]
+    )
+    _, indexed = index.wait_until_indexed(
+        client, "c", expected=1_000_000, stall_timeout=0, poll=0
+    )
+    assert indexed == 1_000_000
 
 
 def test_red_collection_aborts_immediately():
