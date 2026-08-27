@@ -274,9 +274,7 @@ def test_green_with_an_incomplete_index_is_refused_not_assumed():
 def test_a_residual_segment_within_tolerance_is_accepted_not_forced():
     """0,2% dos pontos fora do HNSW são buscados por varredura exata, e isso basta."""
     client = FakeClient(states=[FakeInfo(models.CollectionStatus.GREEN, 998_000)])
-    _, indexed = index.wait_until_indexed(
-        client, "c", expected=1_000_000, stall_timeout=0, poll=0
-    )
+    _, indexed = index.wait_until_indexed(client, "c", expected=1_000_000, stall_timeout=0, poll=0)
     assert indexed == 998_000
 
 
@@ -322,9 +320,7 @@ def test_the_optimizer_is_given_time_while_the_count_is_still_inflated():
             FakeInfo(models.CollectionStatus.GREEN, 1_000_000),
         ]
     )
-    _, indexed = index.wait_until_indexed(
-        client, "c", expected=1_000_000, stall_timeout=30, poll=0
-    )
+    _, indexed = index.wait_until_indexed(client, "c", expected=1_000_000, stall_timeout=30, poll=0)
     assert indexed == 1_000_000
 
 

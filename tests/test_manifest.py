@@ -32,8 +32,13 @@ def test_manifest_records_the_arm_configuration_not_just_its_name(captured):
 
 
 def test_manifest_records_whether_the_tree_was_dirty(captured):
-    """Execução com árvore suja não é citável, e o manifesto tem de dizer isso."""
-    assert captured["run"]["git_dirty"] is True
+    """Execução com árvore suja não é citável, e o manifesto tem de dizer isso.
+
+    O que se afirma é a fidelidade do campo, não um valor fixo: fixar `True`
+    quebrava o teste sempre que a árvore estivesse limpa, que é justamente o
+    estado em que se quer rodar a suíte antes de entregar.
+    """
+    assert captured["run"]["git_dirty"] == manifest.git_is_dirty()
     assert len(captured["run"]["git_commit"]) == 40
 
 
